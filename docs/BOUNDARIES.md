@@ -68,6 +68,18 @@ Things learned by running it (see `evals/`):
 - **opencode npm-installs `@opencode-ai/plugin` into `.opencode/` on first open of a project.** That needs network; the offline installer must pre-seed it.
 - MCP results reach plugins in a different field from built-in tool output; Fuel's plugin searches the whole result.
 
+## Engine status (2026-10-30)
+
+Rocket Engine's MCP server (`rocket_engine.adapters.mcp.server`, branch `GREEN-the-tests`) is connectable.
+Fuel attaches it with `ROCKET_ENGINE_HOME` (see README). Fixes proposed in rocket-engine branch `fuel-mcp-fixes`:
+queued jobs run under their ack's run_id, `get_job_status`/`get_check_results`/`get_logs`/`list_job_kinds` wired,
+measurements kept on PASS, run_spice targets from `constraints.yaml` (caller min/max refused), argument schemas,
+engine errors as JSON, `--project`/`--project-dir` binding with sources confined to the project.
+
+Still open on the engine side: one engine shared by the IDE and MCP (today each MCP process has its own in-memory
+engine), persistence and real revisions (hard-coded `p12`), repair-iteration counting, the workflow tools Fuel's stub
+still provides (constraints, status card, revisions, IP), and "no measurement output" being FAIL rather than NOT_RUN.
+
 ## Open questions to settle with the team
 
 1. **Session id.** Harness doc: the plugin attaches the opencode session id to job calls. Tooling doc (`tooling-operations.yaml`): `session_id` is server-owned. Proposal: the plugin sends `rocket_session`; the Engine treats it as a hint for the repair budget only and derives real identity from the broker credential.

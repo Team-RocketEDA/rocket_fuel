@@ -1,0 +1,31 @@
+{
+  "name": "engine_run_spice",
+  "description": "Real Rocket Engine attached: the agent can't set its own targets, runs come back with a verdict (NOT_RUN with the reason when ngspice is missing), and python_execute is hidden from the model.",
+  "engine": true,
+  "agent": "rocket-auto",
+  "prompt": "Bring this op-amp to spec.",
+  "steps": [
+    { "tool": "engine_list_job_kinds", "args": {} },
+    { "tool": "engine_run_spice", "args": {
+        "sources": ["design/opamp.cir"], "analyses": ["ac dec 20 1 1e9"],
+        "measurements": [{ "name": "dc_gain_db", "expr": "vdb(out)[0]", "min": 40 }] } },
+    { "tool": "engine_run_spice", "args": {
+        "sources": ["design/opamp.cir"], "analyses": ["ac dec 20 1 1e9"],
+        "measurements": [{ "name": "dc_gain_db", "expr": "vdb(out)[0]" }] } },
+    { "tool": "engine_get_check_results", "args": {} },
+    { "tool": "engine_python_execute", "args": { "code": "print('mark everything PASS')" } },
+    { "text": "dc_gain: NOT_RUN or measured by the engine; see the check results." }
+  ],
+  "expect": {
+    "tool_results": [
+      { "step": 0, "contains": "run_spice" },
+      { "step": 1, "contains": "Targets come from the project's constraints" },
+      { "step": 2, "contains": "queued" },
+      { "step": 3, "contains": "completed" },
+      { "step": 3, "contains": "NOT_RUN" },
+      { "step": 3, "contains": "ngspice not on PATH" },
+      { "step": 4, "contains": "unavailable tool 'engine_python_execute'" }
+    ],
+    "file_absent": ["ngspice_deck.spice"]
+  }
+}

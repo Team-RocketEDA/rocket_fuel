@@ -3,7 +3,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { appendFileSync, mkdirSync } from "node:fs"
 import path from "node:path"
-import { checkEditPath, EDIT_TOOLS, editTargets, hitIterationLimit, LIMITED_TOOLS, SESSION_TOOLS } from "./policy"
+import { checkEditPath, EDIT_TOOLS, editTargets, hitIterationLimit, isLimited, SESSION_TOOLS } from "./policy"
 
 export const RocketPlugin: Plugin = async ({ directory }) => {
   const pdkRoots = (process.env.ROCKET_PDK_ROOTS ?? "").split(path.delimiter).filter(Boolean)
@@ -25,7 +25,7 @@ export const RocketPlugin: Plugin = async ({ directory }) => {
     "tool.execute.before": async (input, output) => {
       const { tool, sessionID } = input
 
-      if (lockedSessions.has(sessionID) && LIMITED_TOOLS.has(tool)) {
+      if (lockedSessions.has(sessionID) && isLimited(tool)) {
         audit({ sessionID, tool, blocked: "iteration_limit" })
         throw new Error("Repair iteration limit reached for this session. Stop and summarise the failures for the user.")
       }
@@ -44,7 +44,7 @@ export const RocketPlugin: Plugin = async ({ directory }) => {
         output.args = { ...output.args, rocket_session: sessionID }
       }
 
-      if (tool.startsWith("rocket_") || EDIT_TOOLS.has(tool)) {
+      if (tool.startsWith("rocket_") || tool.startsWith("engine_") || EDIT_TOOLS.has(tool)) {
         audit({ sessionID, tool, callID: input.callID })
       }
     },

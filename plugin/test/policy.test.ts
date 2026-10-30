@@ -53,3 +53,10 @@ test("detects the runner's iteration-limit reply", () => {
   expect(hitIterationLimit('{"error": "iteration_limit_reached"}')).toBe(true)
   expect(hitIterationLimit('{"checks": {}}')).toBe(false)
 })
+
+test("engine run operations count as limited, engine queries don't", async () => {
+  const { isLimited } = await import("../src/policy")
+  expect(isLimited("engine_run_spice")).toBe(true)
+  expect(isLimited("edit")).toBe(true)
+  expect(isLimited("engine_get_job_status")).toBe(false)
+})

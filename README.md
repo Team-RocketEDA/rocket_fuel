@@ -161,9 +161,30 @@ tool calls in a scenario file, runs opencode with Fuel's config, plugin and the 
 | `fake_pass_blocked` | writing `results/`, `.rocket/` (via `design/../`) or outside the project is blocked; the check stays FAIL |
 | `iteration_limit` | after the runner reports the limit, the next edit is blocked and audited |
 | `ip_register_tamper` | a registered block stays UNVERIFIED; editing or overwriting `ip/manifest.yaml` is refused |
+| `engine_run_spice` | with the real engine (needs `ROCKET_ENGINE_HOME`, else skipped): agent-set targets refused, run queued then completed with a verdict, `python_execute` hidden |
 
 To add one, drop a JSON file in `evals/scenarios/` (`{project}` in arguments becomes the project path).
 These test the harness, not the model's judgement.
+
+## Attaching the real engine
+
+By default the simulation tools come from `mcp-stub/` (a toy model). With `ROCKET_ENGINE_HOME` pointing at a
+[rocket-engine](https://github.com/Team-RocketEDA/rocket-engine) checkout (branch with its MCP server, synced with
+`uv sync`), Fuel attaches the engine's MCP server instead:
+
+```bash
+ROCKET_ENGINE_HOME=../rocket-engine scripts/dev.sh "$(scripts/new-demo.sh)"
+```
+
+- the engine provides `engine_run_spice`, `engine_get_job_status`, `engine_get_logs`, `engine_get_check_results`, …;
+  the stub keeps only the workflow tools (constraints, status card, propose/apply revision, IP) and withdraws its own runner
+- the engine is bound to the project: it reads targets from `constraints.yaml` and refuses `min`/`max` from the agent,
+  resolves sources inside the project, and writes run files under `results/engine-runs/`
+- `engine_python_execute` is denied (opencode hides it from the model) until approvals for it exist
+- the prompt gains a short engine section (`harness/prompts/runner-engine.md`)
+- not yet: the engine doesn't count repair iterations, so the limit relies on the prompt and opencode's step cap
+
+Without ngspice installed, `engine_run_spice` honestly returns NOT_RUN (`missing_dependency`).
 
 ## UI client (`client/`)
 

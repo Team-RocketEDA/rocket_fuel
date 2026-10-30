@@ -14,6 +14,11 @@ export const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply
 // Tools that change the design or spend a repair iteration; blocked once a session hits its limit.
 export const LIMITED_TOOLS = new Set([...EDIT_TOOLS, "rocket_run_job", "rocket_apply_revision"])
 
+// Engine operations (engine_run_spice, engine_run_drc, ...) also spend repair iterations.
+export function isLimited(tool: string): boolean {
+  return LIMITED_TOOLS.has(tool) || tool.startsWith("engine_run_")
+}
+
 // Rocket tools that accept the session id the plugin attaches.
 export const SESSION_TOOLS = new Set(["rocket_run_job", "rocket_ip_register"])
 

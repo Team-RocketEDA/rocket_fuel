@@ -93,7 +93,11 @@ def prepare_project(scenario: dict, port: int) -> Path:
     # Projects are git repos (the project service owns git). Without one, opencode matches edit
     # permission patterns against the path from / and design/** never matches.
     subprocess.run(["git", "init", "-q", project], check=True)
-    subprocess.run([FUEL_HOME / "scripts" / "install-into-project.sh", project], check=True, stdout=subprocess.DEVNULL)
+    # Only engine scenarios get the real engine, even if ROCKET_ENGINE_HOME is exported.
+    env = dict(os.environ)
+    if not scenario.get("engine"):
+        env.pop("ROCKET_ENGINE_HOME", None)
+    subprocess.run([FUEL_HOME / "scripts" / "install-into-project.sh", project], check=True, stdout=subprocess.DEVNULL, env=env)
     config_path = project / ".opencode" / "opencode.json"
     config = json.loads(config_path.read_text())
     config["provider"]["fake"] = {
@@ -125,8 +129,21 @@ def run_opencode(project: Path, scenario: dict) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, cwd=project, env=env, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=TIMEOUT_S)
 
 
-def check(project: Path, expect: dict) -> list[str]:
+def tool_results(requests: list[dict]) -> list[str]:
+    """What each scripted tool call returned, in order, from the model's last request."""
+    with_tools = [r for r in requests if r.get("tools")]
+    if not with_tools:
+        return []
+    return [json.dumps(m.get("content")) for m in with_tools[-1]["messages"] if m.get("role") == "tool"]
+
+
+def check(project: Path, expect: dict, results: list[str] | None = None) -> list[str]:
     failures = []
+    for item in expect.get("tool_results", []):
+        step, needle = item["step"], item["contains"]
+        got = results[step] if results and step < len(results) else ""
+        if needle not in got:
+            failures.append(f"tool step {step} result lacks {needle!r}: {got[:160]}")
     for rel, needle in expect.get("file_contains", {}).items():
         text = (project / rel).read_text() if (project / rel).exists() else ""
         if needle not in text:
@@ -160,6 +177,9 @@ def check(project: Path, expect: dict) -> list[str]:
 
 def run_scenario(path: Path) -> bool:
     scenario = json.loads(path.read_text())
+    if scenario.get("engine") and not os.environ.get("ROCKET_ENGINE_HOME"):
+        print(f"SKIP  {scenario['name']}  (set ROCKET_ENGINE_HOME to a rocket-engine checkout)")
+        return True
     FakeModel.steps = scenario["steps"]
     FakeModel.requests = []
     server = ThreadingHTTPServer(("127.0.0.1", 0), FakeModel)
@@ -168,7 +188,7 @@ def run_scenario(path: Path) -> bool:
         project = prepare_project(scenario, server.server_address[1])
         FakeModel.project = str(project)
         result = run_opencode(project, scenario)
-        failures = check(project, scenario["expect"])
+        failures = check(project, scenario["expect"], tool_results(FakeModel.requests))
         tool_turns = sum(1 for r in FakeModel.requests if r.get("tools"))
         if tool_turns < len(scenario["steps"]):
             failures.append(f"opencode stopped after {tool_turns} of {len(scenario['steps'])} scripted turns")

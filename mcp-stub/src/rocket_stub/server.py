@@ -314,5 +314,13 @@ def _limit_reply(state: RunnerState, limit: int) -> dict:
     }
 
 
+# Simulation tools. With a real engine attached (ROCKET_STUB_RUNNER=off) they are withdrawn,
+# so results only ever come from the engine; the workflow tools above stay.
+RUNNER_TOOLS = ["list_job_kinds", "run_job", "get_job_status", "get_check_results", "get_logs"]
+
+
 def main() -> None:
+    if os.environ.get("ROCKET_STUB_RUNNER", "on") == "off":
+        for name in RUNNER_TOOLS:
+            mcp.remove_tool(name)
     mcp.run()
