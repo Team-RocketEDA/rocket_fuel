@@ -53,10 +53,16 @@ scripts/dev.sh "$(scripts/new-demo.sh)"       # fresh demo project + opencode wi
 Then ask: *"Bring this op-amp to spec."* The demo starts out failing its gain target, so you can watch
 the agent run the job, read the failure, edit the design, rerun, and stop at the limit if it can't fix it.
 
-No Meta key yet? Use one of opencode's free models:
+Choosing a model:
+
+| Model | `ROCKET_MODEL` | Needs | Use for |
+|---|---|---|---|
+| Muse Spark 1.3 | (default) `meta/muse-spark-1.3` | Meta key | real designs; prompts are not used for training |
+| Muse Spark 1.3 Contributor | `meta/muse-spark-1.3-contributor` | Meta key | development and rehearsals on demo data: ~12–20× cheaper, but Meta may train on prompts and outputs; 150 requests/min |
+| opencode free models | e.g. `opencode/glm-5.3-flash-free` | nothing | trying the loop with no key at all (not Muse) |
 
 ```bash
-ROCKET_MODEL=opencode/glm-5.3-flash-free scripts/dev.sh "$(scripts/new-demo.sh)"
+ROCKET_MODEL=meta/muse-spark-1.3-contributor scripts/dev.sh "$(scripts/new-demo.sh)"
 ```
 
 Headless, the way an app embeds it:
