@@ -5,6 +5,7 @@ GET /replay with the recording header, and accepts POST /permission/<id>/reply a
 The first event is {"type": "rocket.replay", ...}: the UI must show a REPLAY banner.
 
 Usage: python3 -I evals/replay_server.py evals/recordings/opamp-approval-free.jsonl [--port 4199] [--speed 2]
+       [--pause-at permission.asked]   (hold at the first approval request, for UI work)
 """
 
 import argparse
@@ -23,6 +24,7 @@ class Replay(BaseHTTPRequestHandler):
     header: dict = {}
     events: list[dict] = []
     speed: float = 1.0
+    pause_at: str | None = None
 
     def _cors(self):
         self.send_header("Access-Control-Allow-Origin", "*")
@@ -61,6 +63,12 @@ class Replay(BaseHTTPRequestHandler):
                 if delay > 0:
                     time.sleep(delay)
                 self._send(item["event"])
+                if self.pause_at and item["event"]["type"] == self.pause_at:
+                    # Hold here (e.g. on an approval card) until the client disconnects.
+                    while True:
+                        time.sleep(15)
+                        self.wfile.write(b": paused\n\n")
+                        self.wfile.flush()
         except (BrokenPipeError, ConnectionResetError):
             pass
 
@@ -82,10 +90,12 @@ def main() -> int:
     parser.add_argument("recording", type=Path)
     parser.add_argument("--port", type=int, default=4199)
     parser.add_argument("--speed", type=float, default=1.0, help="2 = twice as fast")
+    parser.add_argument("--pause-at", help="stop at the first event of this type and hold, e.g. permission.asked")
     args = parser.parse_args()
 
     Replay.header, Replay.events = load(args.recording)
     Replay.speed = args.speed
+    Replay.pause_at = args.pause_at
     print(f"REPLAY of {args.recording.name} ({len(Replay.events)} events) on http://127.0.0.1:{args.port}/event")
     ThreadingHTTPServer(("127.0.0.1", args.port), Replay).serve_forever()
     return 0

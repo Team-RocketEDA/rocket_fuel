@@ -39,6 +39,12 @@ test("creates a session, prompts and replies with basic auth", async () => {
   expect(JSON.parse(reply.body)).toEqual({ reply: "once" })
 })
 
+test("subscribe resolves quietly when cancelled before connecting", async () => {
+  const controller = new AbortController()
+  controller.abort()
+  await client.subscribe(() => {}, controller.signal)
+})
+
 test("subscribe parses events split across chunks", async () => {
   const types: string[] = []
   await client.subscribe((event) => types.push(event.type))

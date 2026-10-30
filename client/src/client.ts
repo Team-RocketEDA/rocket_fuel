@@ -54,7 +54,13 @@ export class FuelClient {
   async subscribe(onEvent: (event: OpencodeEvent) => void, signal?: AbortSignal): Promise<void> {
     const headers: Record<string, string> = { Accept: "text/event-stream" }
     if (this.auth) headers.Authorization = this.auth
-    const response = await this.fetchImpl(this.baseUrl + "/event", { headers, signal })
+    let response: Response
+    try {
+      response = await this.fetchImpl(this.baseUrl + "/event", { headers, signal })
+    } catch (error) {
+      if (signal?.aborted) return
+      throw error
+    }
     if (!response.ok || !response.body) throw new Error(`GET /event failed: ${response.status}`)
 
     const reader = response.body.getReader()

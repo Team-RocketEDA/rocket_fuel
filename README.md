@@ -204,7 +204,8 @@ without a live agent and as a fallback if the model API is down during a demo.
 ROCKET_MODEL=opencode/glm-5.3-flash-free python3 -I evals/record_session.py --approve \
     --out evals/recordings/opamp-approval-free.jsonl
 
-# replay at real speed (or --speed 5) as an SSE stream on http://127.0.0.1:4199/event
+# replay at real speed (or --speed 5) as an SSE stream on http://127.0.0.1:4199/event;
+# --pause-at permission.asked holds on the first approval card
 python3 -I evals/replay_server.py evals/recordings/opamp-approval-free.jsonl
 ```
 
