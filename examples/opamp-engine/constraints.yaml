@@ -1,9 +1,16 @@
 schema: rocketeda/constraints/v0.1
 # Generic level-1 models (no foundry PDK needed). Run with the real Rocket Engine and ngspice.
 pdk: none
+title: Two-stage op-amp
+description: Two-stage Miller op-amp on generic level-1 models, checked with ngspice.
 agent:
   iteration_limit: 3
   mode: approval
+# What "Run checks" simulates (the agent uses the same netlists).
+simulation:
+  operation: run_spice
+  sources: [design/opamp.cir, tests/tb_opamp.cir]
+  analyses: ["ac dec 50 1 1e10"]
 # Each check says what to hit and how it is measured; the engine uses these, not the agent's own.
 checks:
   - id: opamp.dc_gain

@@ -3,7 +3,8 @@
 
 Simulations run on the real engine. Its tools start with `engine_`:
 
-- `engine_run_spice` runs ngspice. Give `sources` (netlist files in the project), `analyses` and `measurements` (`name` and `expr`). Do not give `min` or `max`: targets come from `constraints.yaml`, and the engine refuses them. A measurement name must match a metric in the constraints.
+- `engine_run_spice` runs ngspice. Give `sources` (netlist files in the project), `analyses` and `measurements` (each a `name` matching a metric in `constraints.yaml`). Do not give `min`, `max` or, when the constraints define one, `expr`: the engine takes targets and measurement formulas from `constraints.yaml` and refuses the agent's own.
+- When `constraints.yaml` has a `simulation` block, use its `sources` and `analyses`.
 - It returns a queued acknowledgement with a `run_id`. Read the result with `engine_get_job_status` (verdict, measured values, margins) and search the log with `engine_get_logs`.
 - `engine_get_check_results` shows the latest verdict per operation; `engine_list_job_kinds` shows what the engine can run.
 - A verdict of NOT_RUN means the check did not run (for example a missing tool). Report it with its reason; never treat it as a pass or a fail, and never estimate the numbers yourself.

@@ -1,0 +1,10 @@
+schema: rocketeda/constraints/v0.1
+title: Empty project
+description: Start from nothing; ask the assistant to create a design, or add files yourself.
+pdk: none
+agent:
+  iteration_limit: 3
+  mode: approval
+# Add checks as the design takes shape, e.g.
+#  - {id: opamp.dc_gain, metric: dc_gain_db, comparison: ">=", value: 60, unit: dB, required: true, expr: "vdb(out)[0]"}
+checks: []
