@@ -165,6 +165,25 @@ tool calls in a scenario file, runs opencode with Fuel's config, plugin and the 
 To add one, drop a JSON file in `evals/scenarios/` (`{project}` in arguments becomes the project path).
 These test the harness, not the model's judgement.
 
+## UI client (`client/`)
+
+A dependency-free TypeScript client for the IDE's assistant panel:
+
+- `FuelClient`: `createSession`, `prompt`, `reply` (approve/reject), `abort`, and `subscribe` to the event stream.
+  Works against a live opencode server or `evals/replay_server.py`.
+- `reduce(view, event)`: turns opencode events into what the panel draws: chat messages (streamed), tool steps
+  with readable labels, approval cards with the file and diff, the check table and iteration count (taken only
+  from the runner's tool results, never from chat text), and a `replay` flag when the source is a recording.
+
+opencode asks for approval before it sends a call's arguments, so for `apply_revision` the client shows the diff of
+the single proposed-but-unapplied revision, and says so instead of guessing if there are several.
+
+```bash
+(cd client && bun install && bun test)        # reducer tested against the committed recordings
+OPENCODE_SERVER_PASSWORD=dev scripts/dev.sh "$(scripts/new-demo.sh)" serve --port 4097 &
+OPENCODE_SERVER_PASSWORD=dev bun client/examples/live.ts --approve   # drive a live session from the client
+```
+
 ## Reliability with a real model
 
 ```bash
