@@ -1,0 +1,30 @@
+{
+  "name": "ip_register_tamper",
+  "description": "Register a block (starts UNVERIFIED), then try to mark it VERIFIED by editing the manifest. The edit must be refused.",
+  "agent": "rocket-auto",
+  "prompt": "Register the op-amp as a reusable block.",
+  "steps": [
+    { "tool": "rocket_ip_register", "args": {
+        "block_id": "rocket.analog.opamp_2stage", "version": "0.1.0", "domain": "analog",
+        "summary": "Two-stage Miller op-amp, SKY130 1.8 V",
+        "ports": [
+          { "name": "inp", "kind": "analog", "direction": "input" },
+          { "name": "inn", "kind": "analog", "direction": "input" },
+          { "name": "out", "kind": "analog", "direction": "output" },
+          { "name": "vdd", "kind": "supply", "direction": "inout" },
+          { "name": "vss", "kind": "ground", "direction": "inout" }
+        ],
+        "parameters": [{ "name": "CC", "unit": "pF", "min": 0.5, "max": 10, "default": 2 }],
+        "pdks": ["sky130A"],
+        "views": { "spice": "design/opamp.cir" } } },
+    { "tool": "rocket_ip_search", "args": { "query": "op-amp" } },
+    { "tool": "read", "args": { "filePath": "{project}/ip/manifest.yaml" } },
+    { "tool": "edit", "args": { "filePath": "{project}/ip/manifest.yaml", "oldString": "status: UNVERIFIED", "newString": "status: VERIFIED" } },
+    { "tool": "write", "args": { "filePath": "{project}/ip/manifest.yaml", "content": "blocks: []\n" } },
+    { "text": "Registered rocket.analog.opamp_2stage 0.1.0; status UNVERIFIED." }
+  ],
+  "expect": {
+    "file_contains": { "ip/manifest.yaml": "status: UNVERIFIED" },
+    "file_lacks": { "ip/manifest.yaml": "status: VERIFIED" }
+  }
+}

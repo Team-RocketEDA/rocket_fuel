@@ -25,18 +25,23 @@ The prompt and permission rules reference these names. opencode exposes them as
 `rocket_<tool>`, so the MCP server **must be named `rocket`**.
 
 Implemented in the stub today: `get_constraints`, `get_status`, `list_job_kinds`,
-`run_job`, `get_check_results`, `ip_search`.
+`get_job_status`, `run_job`, `get_check_results`, `get_logs`, `propose_revision`, `apply_revision`,
+`propose_constraint_change`, `ip_search`, `ip_get`, `ip_register`. Their signatures and replies in
+`mcp-stub/src/rocket_stub/server.py` are the reference for the Engine's server.
 
-Still to agree (PRD harness §7.2): `propose_revision`, `apply_revision`,
-`propose_constraint_change`, `ip_get`, `ip_register`, `ip_instantiate`,
-`generate_views`, `check_view_sync`, `check_connection`, `export_project`,
-`pdk_list`, `pdk_get_cells`, `get_job_status`, `cancel_job`, `get_logs`,
-`parse_report`, `list_artifacts`.
+Still to agree (PRD harness §7.2): `ip_instantiate`, `generate_views`, `check_view_sync`,
+`check_connection`, `export_project`, `pdk_list`, `pdk_get_cells`, `cancel_job`, `parse_report`,
+`list_artifacts`.
 
 Reply shapes Fuel relies on:
 - `run_job` → `{run_id, iteration, iterations_left, checks: {id: {status, measured, target, margin, required, producer}}, failing_required, log_excerpt}`
 - limit reached → `{"error": "iteration_limit_reached", failing, changes_tried}` (the plugin matches this string)
-- duplicate change → `{"error": "duplicate_revision", ...}`
+- duplicate change → `{"error": "duplicate_revision", ...}` (from `run_job` and `propose_revision`)
+- `run_job` returns `changes_since_last_run` and `get_status.changes_tried[].changes`: the actual diff lines,
+  computed from the files. The prompt tells the agent to report these, because in a live run it described a
+  change it had intended but not made
+- `ip_register` never accepts a status or evidence; blocks start `UNVERIFIED`, and `ip/manifest.yaml` is
+  denied to the agent's edit tools
 - statuses are exactly `PASS | FAIL | NOT_RUN | UNSUPPORTED`
 - no tool may set a status; logs come back compact (≤ ~4k tokens, first error first)
 

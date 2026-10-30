@@ -5,16 +5,32 @@ prompt and permission rules don't change when Rocket Engine's real MCP bridge
 replaces this. opencode prefixes them with the server name: rocket_run_job etc.
 """
 
+import difflib
 import os
+import subprocess
 from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
 
-from rocket_stub.sim import RunnerState, design_hash, evaluate, load_constraints, read_params, simulate
+from rocket_stub import ip
+from rocket_stub.sim import (
+    NETLIST,
+    RunnerState,
+    changed_lines,
+    design_files,
+    design_hash,
+    evaluate,
+    fake_log,
+    load_constraints,
+    read_params,
+    simulate,
+)
 
 mcp = MCPServer("rocket")
 PROJECT = Path(os.environ.get("ROCKET_PROJECT_DIR", os.getcwd())).resolve()
 STUB_NOTE = "STUB RESULT from rocket_fuel/mcp-stub. Not a real simulation; never display as verified."
+LOGS = Path(".rocket/stub-logs")
+EDITABLE = ("design/", "tests/", "workflows/", "ip/")
 
 
 def iteration_limit() -> int:
@@ -82,8 +98,13 @@ def run_job(kind: str, hypothesis: str = "", rocket_session: str = "") -> dict:
             return _limit_reply(state, limit)
         state.iteration += 1
 
-    measured = simulate(read_params(PROJECT))
+    params = read_params(PROJECT)
+    measured = simulate(params)
     state.run_count += 1
+    run_id = f"stub-{state.run_count}"
+    log_path = PROJECT / LOGS / f"{run_id}.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("\n".join(fake_log((PROJECT / NETLIST).read_text(), params, measured)) + "\n")
     checks = load_constraints(PROJECT)["checks"]
     results = {}
     for check in checks:
@@ -101,20 +122,26 @@ def run_job(kind: str, hypothesis: str = "", rocket_session: str = "") -> dict:
     state.results = results
 
     failed = [cid for cid, r in results.items() if r["status"] != "PASS" and r["required"]]
-    state.ledger.append({"iteration": state.iteration, "design": current, "hypothesis": hypothesis, "measured": measured})
+    # The ledger records what actually changed (from the files), not what the agent says it changed.
+    files = design_files(PROJECT)
+    changes = changed_lines(state.last_design, files) if state.last_design else []
+    state.last_design = files
+    state.ledger.append({"iteration": state.iteration, "design": current, "hypothesis": hypothesis, "changes": changes, "measured": measured})
     if failed:
         state.last_failed_hash = current
         state.failed_hashes.append(current)
     else:
         state.last_failed_hash = None
+    state.runs[run_id] = {"kind": kind, "state": "completed", "design": current, "failing_required": failed, "session": rocket_session}
     state.save(PROJECT)
 
     return {
-        "run_id": f"stub-{state.run_count}",
+        "run_id": run_id,
         "iteration": state.iteration,
         "iterations_left": max(0, limit - state.iteration),
         "checks": results,
         "failing_required": failed,
+        "changes_since_last_run": changes,
         "log_excerpt": [f"* stub ngspice: {k} = {v}" for k, v in measured.items()],
         "note": STUB_NOTE,
     }
@@ -128,9 +155,152 @@ def get_check_results() -> dict:
 
 
 @mcp.tool()
+def get_job_status(run_id: str) -> dict:
+    """State of a run: queued, running, completed, error or cancelled. Stub runs complete immediately."""
+    run = RunnerState.load(PROJECT).runs.get(run_id)
+    return {"run_id": run_id, **run} if run else {"error": "unknown_run", "message": f"no run {run_id!r}"}
+
+
+@mcp.tool()
+def get_logs(run_id: str, query: str = "", offset: int = 0, limit: int = 40) -> dict:
+    """Search or page through a run's full log. With query, returns matching lines (case-insensitive) with line numbers."""
+    path = PROJECT / LOGS / f"{run_id}.log"
+    if not path.exists():
+        return {"error": "unknown_run", "message": f"no log for {run_id!r}"}
+    lines = path.read_text().splitlines()
+    numbered = [(i + 1, line) for i, line in enumerate(lines)]
+    if query:
+        numbered = [(n, line) for n, line in numbered if query.lower() in line.lower()]
+    limit = max(1, min(limit, 200))
+    page = numbered[offset : offset + limit]
+    return {
+        "run_id": run_id,
+        "total_lines": len(lines),
+        "matched": len(numbered),
+        "offset": offset,
+        "lines": [f"{n}: {line}" for n, line in page],
+        "more": offset + limit < len(numbered),
+    }
+
+
+@mcp.tool()
+def propose_revision(file: str, old_text: str, new_text: str, hypothesis: str, checks: list[str]) -> dict:
+    """Stage a targeted change for specific failing checks, with a one-sentence hypothesis.
+
+    old_text must appear exactly once in file. Returns a revision id and diff; nothing changes until
+    apply_revision. A change that recreates a design which already failed is rejected.
+    """
+    if not file.startswith(EDITABLE) or ".." in Path(file).parts:
+        return {"error": "invalid_path", "message": f"revisions may only touch {', '.join(EDITABLE)}"}
+    path = PROJECT / file
+    if not path.is_file():
+        return {"error": "invalid_path", "message": f"{file} does not exist"}
+    if not hypothesis.strip() or not checks:
+        return {"error": "invalid_arguments", "message": "give a hypothesis and the check ids this change targets"}
+    before = path.read_text()
+    if before.count(old_text) != 1:
+        return {"error": "invalid_arguments", "message": f"old_text appears {before.count(old_text)} times in {file}; it must appear exactly once"}
+
+    after = before.replace(old_text, new_text)
+    state = RunnerState.load(PROJECT)
+    proposed = design_hash(PROJECT, {file: after.encode()})
+    if proposed in state.failed_hashes:
+        earlier = next((e for e in state.ledger if e["design"] == proposed), None)
+        return {"error": "duplicate_revision", "message": "This change recreates a design that already failed.", "earlier_result": earlier}
+
+    state.revision_count += 1
+    revision_id = f"rev-{state.revision_count}"
+    state.staged[revision_id] = {"file": file, "before": before, "after": after, "hypothesis": hypothesis, "checks": checks}
+    state.save(PROJECT)
+    diff = difflib.unified_diff(before.splitlines(), after.splitlines(), f"a/{file}", f"b/{file}", lineterm="")
+    return {"revision_id": revision_id, "file": file, "hypothesis": hypothesis, "checks": checks, "diff": "\n".join(diff)}
+
+
+@mcp.tool()
+def apply_revision(revision_id: str) -> dict:
+    """Apply a staged revision and commit it. Fails if the file changed since it was proposed."""
+    state = RunnerState.load(PROJECT)
+    rev = state.staged.pop(revision_id, None)
+    if rev is None:
+        return {"error": "unknown_revision", "message": f"no staged revision {revision_id!r}"}
+    path = PROJECT / rev["file"]
+    if path.read_text() != rev["before"]:
+        state.save(PROJECT)
+        return {"error": "stale_revision", "message": f"{rev['file']} changed since {revision_id} was proposed; propose again"}
+    path.write_text(rev["after"])
+    state.save(PROJECT)
+    return {"revision_id": revision_id, "file": rev["file"], "commit": _commit(f"{revision_id}: {rev['hypothesis']}", rev["file"])}
+
+
+@mcp.tool()
+def propose_constraint_change(check_id: str, new_value: float, reason: str) -> dict:
+    """Ask the user to change a target. Nothing changes unless the user accepts it in the IDE."""
+    checks = {c["id"]: c for c in load_constraints(PROJECT)["checks"]}
+    if check_id not in checks:
+        return {"error": "unknown_check", "message": f"no check {check_id!r}", "checks": sorted(checks)}
+    state = RunnerState.load(PROJECT)
+    proposal = {"check_id": check_id, "current": checks[check_id]["value"], "proposed": new_value, "reason": reason, "status": "pending_user"}
+    state.constraint_proposals.append(proposal)
+    state.save(PROJECT)
+    return {**proposal, "message": "Proposed to the user. constraints.yaml is unchanged; do not continue as if it were accepted."}
+
+
+@mcp.tool()
 def ip_search(query: str, domain: str = "", pdk: str = "") -> list[dict]:
-    """Search reusable IP blocks by function, domain, PDK and port types."""
-    return []
+    """Search reusable IP blocks by function, domain and PDK. Returns id, version, summary and verification status."""
+    return ip.search(ip.load(PROJECT), query, domain, pdk)
+
+
+@mcp.tool()
+def ip_get(block_id: str, version: str = "") -> dict:
+    """Full record for one IP block: ports, parameters with bounds, views, PDKs and verification status."""
+    matches = [b for b in ip.load(PROJECT) if b["id"] == block_id and (not version or b["version"] == version)]
+    return matches[-1] if matches else {"error": "unknown_block", "message": f"no IP block {block_id!r}"}
+
+
+@mcp.tool()
+def ip_register(
+    block_id: str,
+    version: str,
+    domain: str,
+    summary: str,
+    ports: list[dict],
+    parameters: list[dict],
+    pdks: list[str],
+    views: dict[str, str],
+    rocket_session: str = "",
+) -> dict:
+    """Register a reusable block in the project library (ip/manifest.yaml). It always starts UNVERIFIED.
+
+    ports: [{name, kind: digital|analog|optical|supply|ground, direction: input|output|inout}]
+    parameters: [{name, unit, min, max, default}]
+    views: {"spice": "design/opamp.cir", ...} existing files under design/ or ip/
+    """
+    blocks = ip.load(PROJECT)
+    block = {
+        "id": block_id, "version": version, "domain": domain, "summary": summary,
+        "ports": ports, "parameters": parameters, "pdks": pdks, "views": views,
+        "status": "UNVERIFIED", "evidence": None,
+        "origin": {"created_by": "agent", "session": rocket_session},
+    }
+    errors = ip.validate(PROJECT, block, blocks)
+    if errors:
+        return {"error": "invalid_block", "messages": errors}
+    blocks.append(block)
+    ip.save(PROJECT, blocks)
+    commit = _commit(f"Register IP {block_id} {version}", str(ip.MANIFEST))
+    return {"id": block_id, "version": version, "status": "UNVERIFIED", "commit": commit,
+            "message": "Registered. Status stays UNVERIFIED until the runner records passing evidence."}
+
+
+def _commit(message: str, *paths: str) -> str | None:
+    """Stand-in for the project service, which owns every git write."""
+    if not (PROJECT / ".git").exists():
+        return None
+    git = ["git", "-C", str(PROJECT), "-c", "user.name=rocketeda", "-c", "user.email=rocketeda@localhost"]
+    subprocess.run([*git, "add", "--", *paths], check=True, capture_output=True)
+    subprocess.run([*git, "commit", "-q", "-m", message, "--", *paths], check=True, capture_output=True)
+    return subprocess.run([*git, "rev-parse", "--short", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
 
 
 def _limit_reply(state: RunnerState, limit: int) -> dict:

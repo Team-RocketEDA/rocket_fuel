@@ -131,6 +131,9 @@ def check(project: Path, expect: dict) -> list[str]:
         text = (project / rel).read_text() if (project / rel).exists() else ""
         if needle not in text:
             failures.append(f"{rel} does not contain {needle!r}")
+    for rel, needle in expect.get("file_lacks", {}).items():
+        if (project / rel).exists() and needle in (project / rel).read_text():
+            failures.append(f"{rel} contains {needle!r}")
     for rel in expect.get("file_absent", []):
         if (project / rel).exists():
             failures.append(f"{rel} exists but should not")

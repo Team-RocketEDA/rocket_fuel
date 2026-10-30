@@ -12,11 +12,12 @@ function makeProject() {
 }
 
 describe("checkEditPath", () => {
-  test("allows design files", () => {
+  test("allows design files and block sources under ip/", () => {
     expect(checkEditPath(makeProject(), "design/opamp.cir").allow).toBe(true)
+    expect(checkEditPath(makeProject(), "ip/opamp_2stage/opamp.cir").allow).toBe(true)
   })
 
-  test.each(["results/opamp.dc_gain.yaml", ".rocket/stub-state.json", ".git/config", "exports/x.gds", ".opencode/opencode.json"])(
+  test.each(["results/opamp.dc_gain.yaml", ".rocket/stub-state.json", ".git/config", "exports/x.gds", ".opencode/opencode.json", "ip/manifest.yaml"])(
     "denies protected path %s",
     (p) => {
       expect(checkEditPath(makeProject(), p).allow).toBe(false)

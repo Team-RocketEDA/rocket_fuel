@@ -6,13 +6,16 @@ import path from "node:path"
 // the plugin re-checks them on the resolved real path so symlinks and "../" can't get around them.
 export const PROTECTED_DIRS = ["results", "exports", ".rocket", ".opencode", ".git"]
 
+// Files the agent must change through tools, never by editing: the IP manifest holds verification status.
+export const PROTECTED_FILES = ["ip/manifest.yaml"]
+
 export const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply_patch"])
 
 // Tools that change the design or spend a repair iteration; blocked once a session hits its limit.
 export const LIMITED_TOOLS = new Set([...EDIT_TOOLS, "rocket_run_job", "rocket_apply_revision"])
 
 // Rocket tools that accept the session id the plugin attaches.
-export const SESSION_TOOLS = new Set(["rocket_run_job"])
+export const SESSION_TOOLS = new Set(["rocket_run_job", "rocket_ip_register"])
 
 export type Verdict = { allow: true } | { allow: false; reason: string }
 
@@ -50,6 +53,10 @@ export function checkEditPath(projectDir: string, filePath: string, pdkRoots: st
   const top = rel.split(path.sep)[0]
   if (PROTECTED_DIRS.includes(top)) {
     return { allow: false, reason: `${top}/ is written only by the runner and project service: ${filePath}` }
+  }
+  const relPosix = rel.split(path.sep).join("/")
+  if (PROTECTED_FILES.includes(relPosix)) {
+    return { allow: false, reason: `${relPosix} is changed only through the rocket tools: ${filePath}` }
   }
   return { allow: true }
 }

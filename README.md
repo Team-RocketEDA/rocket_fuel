@@ -12,7 +12,7 @@ and when it must stop**.
 - **No fake results.** The agent cannot write check results or runner state, and has no tool that sets a status.
   It can only ask the runner to run a job and read what comes back.
 - **Edits stay inside the design folders.** `design/`, `tests/`, `workflows/` and `ip/` are editable;
-  `results/`, `exports/`, `.rocket/`, `.opencode/`, `.git/`, PDK installs and anything outside the project are not,
+  `results/`, `exports/`, `.rocket/`, `.opencode/`, `.git/`, `ip/manifest.yaml`, PDK installs and anything outside the project are not,
   including through symlinks or `../` tricks.
 - **A hard stop.** When the runner reports the repair-iteration limit, the session is locked: no more edits or runs,
   and the agent has to summarise and hand back to the user.
@@ -132,11 +132,14 @@ Until the real one is available, `mcp-stub/` provides:
 | Tool | Does |
 |---|---|
 | `get_constraints` | the project's targets and required checks |
-| `get_status` | state card: check statuses, iteration count and limit, changes tried |
-| `list_job_kinds` | supported job kinds |
-| `run_job` | run a job, evaluate checks, count iterations, refuse repeats of a failed design, report the limit |
+| `get_status` | state card: check statuses, iteration count and limit, changes tried (from the files, not the agent's claims) |
+| `list_job_kinds`, `get_job_status` | supported job kinds; state of a run |
+| `run_job` | run a job, evaluate checks, count iterations, refuse repeats of a failed design, report the limit and what changed |
 | `get_check_results` | current check table |
-| `ip_search` | IP search (returns nothing yet) |
+| `get_logs` | search (`query`) or page through a run's full log |
+| `propose_revision`, `apply_revision` | stage a change with a hypothesis and diff, reject repeats of failed designs; apply and commit (asks in the approval profile) |
+| `propose_constraint_change` | ask the user to change a target; never changes `constraints.yaml` itself |
+| `ip_search`, `ip_get`, `ip_register` | the project IP library in `ip/manifest.yaml`; new blocks are always UNVERIFIED |
 
 Stub results are stamped `producer: "stub"` and are not real simulations. The full tool list and reply shapes
 Fuel expects are in [docs/BOUNDARIES.md](docs/BOUNDARIES.md).
@@ -157,6 +160,7 @@ tool calls in a scenario file, runs opencode with Fuel's config, plugin and the 
 | `fail_fix_rerun` | FAIL → edit design → rerun → PASS in one counted iteration; the session id reaches `run_job` |
 | `fake_pass_blocked` | writing `results/`, `.rocket/` (via `design/../`) or outside the project is blocked; the check stays FAIL |
 | `iteration_limit` | after the runner reports the limit, the next edit is blocked and audited |
+| `ip_register_tamper` | a registered block stays UNVERIFIED; editing or overwriting `ip/manifest.yaml` is refused |
 
 To add one, drop a JSON file in `evals/scenarios/` (`{project}` in arguments becomes the project path).
 These test the harness, not the model's judgement.
@@ -179,8 +183,9 @@ A recording is JSONL: a header line (model, agent, prompt, `"recording": "rocket
 `{"t_ms": ..., "event": {...}}` lines in opencode's own event format. Local paths are rewritten to `/project`.
 The replay stream starts with a `rocket.replay` event; anything displaying it must show a REPLAY banner.
 
-`evals/recordings/opamp-approval-free.jsonl` is a real 87-second session (free GLM model, stub runner,
-approval profile): it reads the constraints, runs the baseline, and asks four times before editing the design.
+Committed recordings (free GLM model, stub runner, approval profile):
+- `opamp-approval-free.jsonl`: reads the constraints, runs the baseline, asks four times before editing the design.
+- `opamp-fix-and-register-free.jsonl`: propose → approve → apply a revision, reach PASS (stub), register the block as UNVERIFIED.
 
 ## Why opencode 1.19.5
 

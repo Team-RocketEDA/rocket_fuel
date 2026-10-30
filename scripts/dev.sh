@@ -16,13 +16,17 @@ if [[ "$(git -C "$PROJECT" rev-parse --show-toplevel 2>/dev/null)" != "$PROJECT"
   exit 1
 fi
 
+# .env first (the model choice is baked in at install time); a ROCKET_MODEL set on the command line wins.
+CLI_MODEL="${ROCKET_MODEL:-}"
+if [[ -f "$FUEL_HOME/.env" ]]; then set -a; source "$FUEL_HOME/.env"; set +a; fi
+[[ -n "$CLI_MODEL" ]] && export ROCKET_MODEL="$CLI_MODEL"
+
 "$FUEL_HOME/scripts/install-into-project.sh" "$PROJECT" >/dev/null
 
 # Own data/config dirs so the pinned 1.x build never shares a database with a global opencode install.
 STATE="$FUEL_HOME/.opencode-home"
 export XDG_DATA_HOME="$STATE/data" XDG_CONFIG_HOME="$STATE/config" XDG_STATE_HOME="$STATE/state" XDG_CACHE_HOME="$STATE/cache"
 export ROCKET_FUEL_HOME="$FUEL_HOME"
-[[ -f "$FUEL_HOME/.env" ]] && set -a && source "$FUEL_HOME/.env" && set +a
 
 # opencode takes its project directory from PWD.
 cd "$PROJECT"
