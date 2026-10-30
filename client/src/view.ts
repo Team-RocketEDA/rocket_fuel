@@ -267,8 +267,12 @@ export function reduce(view: SessionView, event: OpencodeEvent, time = Date.now(
       return { ...view, status: view.status === "error" ? "error" : "idle" }
     case "session.error":
       return { ...view, status: "error", error: props.error?.data?.message ?? props.error?.name ?? "Agent error" }
-    case "message.updated":
-      return props.info?.id ? { ...view, roles: { ...view.roles, [props.info.id]: props.info.role } } : view
+    case "message.updated": {
+      if (!props.info?.id) return view
+      // Assistant messages carry the model that wrote them, which also covers restored history.
+      const model = props.info.providerID && props.info.modelID ? `${props.info.providerID}/${props.info.modelID}` : view.model
+      return { ...view, model, agent: props.info.agent ?? view.agent, roles: { ...view.roles, [props.info.id]: props.info.role } }
+    }
     case "message.part.updated":
       // Prefer the part's own timestamp, so restored history keeps messages and tool calls in order.
       return props.part ? applyPart(view, props.part, props.part.time?.start ?? props.time ?? time) : view
