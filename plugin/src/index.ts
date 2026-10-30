@@ -50,7 +50,8 @@ export const RocketPlugin: Plugin = async ({ directory }) => {
     },
 
     "tool.execute.after": async (input, output) => {
-      if (input.tool === "rocket_run_job" && hitIterationLimit(output.output ?? "")) {
+      // MCP results don't arrive in output.output alone, so search the whole result.
+      if (input.tool === "rocket_run_job" && hitIterationLimit(JSON.stringify(output))) {
         lockedSessions.add(input.sessionID)
         audit({ sessionID: input.sessionID, event: "iteration_limit_reached" })
       }

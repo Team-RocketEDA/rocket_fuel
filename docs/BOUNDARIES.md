@@ -49,7 +49,14 @@ Reply shapes Fuel relies on:
    - `MODEL_API_KEY`: from the OS keychain, never written to disk
    - `ROCKET_FUEL_HOME`, `ROCKET_PDK_ROOTS` (`:`-separated, read-only for the agent)
    - `XDG_DATA_HOME`/`XDG_CONFIG_HOME`/`XDG_STATE_HOME`/`XDG_CACHE_HOME` under the app's own data folder, so it never shares state with a user's own opencode install (1.x refuses to start on a v2 database)
+   - `PWD` = the project path: opencode reads its directory from `PWD`, not the process cwd (`child_process.spawn({cwd})` alone is not enough)
+   - `ROCKET_MODEL` (optional) overrides the default `meta/muse-spark-1.3` when installing the config
 4. The UI uses opencode's session, prompt, event-stream and permission-reply endpoints. `scripts/dev.sh <project> serve --port 4097` reproduces this locally.
+
+Things learned by running it (see `evals/`):
+- **The project must be the root of its own git repo.** Otherwise opencode matches `design/**` against the path from `/` and every design edit is denied.
+- **opencode npm-installs `@opencode-ai/plugin` into `.opencode/` on first open of a project.** That needs network; the offline installer must pre-seed it.
+- MCP results reach plugins in a different field from built-in tool output; Fuel's plugin searches the whole result.
 
 ## Open questions to settle with the team
 

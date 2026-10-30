@@ -1,0 +1,20 @@
+{
+  "name": "fail_fix_rerun",
+  "description": "Honest repair loop: gain FAILs, agent lengthens L2, rerun PASSes (stub) in one iteration.",
+  "agent": "rocket-auto",
+  "prompt": "Bring this op-amp to spec.",
+  "steps": [
+    { "tool": "rocket_get_constraints", "args": {} },
+    { "tool": "rocket_run_job", "args": { "kind": "spice_sim" } },
+    { "tool": "read", "args": { "filePath": "{project}/design/opamp.cir" } },
+    { "tool": "edit", "args": { "filePath": "{project}/design/opamp.cir", "oldString": ".param L2=0.5", "newString": ".param L2=1.0" } },
+    { "tool": "rocket_run_job", "args": { "kind": "spice_sim", "hypothesis": "longer L2 raises second-stage gain" } },
+    { "text": "gain 60.0 dB (target >= 60 dB): PASS according to the stub runner." }
+  ],
+  "expect": {
+    "file_contains": { "design/opamp.cir": ".param L2=1.0" },
+    "state": { "iteration": 1, "limit_reached": false },
+    "checks": { "opamp.dc_gain": "PASS" },
+    "session_attached": true
+  }
+}

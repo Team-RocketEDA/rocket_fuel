@@ -48,15 +48,29 @@ npm install                                  # pinned opencode-ai 1.19.5 into no
 (cd plugin && bun install && bun test)       # plugin unit tests
 (cd mcp-stub && uv sync && uv run pytest)    # stub runner: fail -> fix -> pass, duplicates, iteration limit
 
+python3 -I evals/run_scenarios.py           # scripted sessions through real opencode (no key needed)
+
 cp .env.example .env                         # put your Meta key in MODEL_API_KEY; .env is gitignored
-scripts/dev.sh examples/opamp-demo           # opens the opencode TUI on the demo with Fuel installed
-scripts/dev.sh examples/opamp-demo serve --port 4097   # headless, the way the IDE will run it
+scripts/dev.sh "$(scripts/new-demo.sh)"      # fresh demo repo + opencode TUI with Fuel installed
+ROCKET_MODEL=opencode/glm-5.3-flash-free scripts/dev.sh "$(scripts/new-demo.sh)"   # free model, no Meta key
+scripts/dev.sh <project> serve --port 4097   # headless, the way the IDE will run it
 ```
 
-`scripts/dev.sh` uses a repo-local `.opencode-home/` so the pinned 1.x build doesn't clash
-with a globally installed opencode (v2 changed the database format).
+Then ask: *"Bring this op-amp to spec."* `scripts/new-demo.sh` recreates the demo from scratch each time.
 
-Then ask: *"Bring this op-amp to spec."* Reset the demo with
-`git checkout examples/opamp-demo/design && rm -rf examples/opamp-demo/.rocket`.
+- A project must be the root of its own git repo: opencode matches permission patterns like `design/**` from the git root.
+- `scripts/dev.sh` uses a repo-local `.opencode-home/` so the pinned 1.x build doesn't clash with a global opencode install (v2 changed the database format).
+- Stub results are stamped `producer: "stub"` and must never be shown as verified.
 
-Stub results are stamped `producer: "stub"` and must never be shown as verified.
+## Scripted sessions (`evals/`)
+
+`evals/run_scenarios.py` runs the real pinned opencode with Fuel's config, plugin and the stub MCP, against a
+fake model that replays the tool calls in `evals/scenarios/*.json`. It tests the harness, not the model:
+
+| Scenario | Proves |
+|---|---|
+| `fail_fix_rerun` | FAIL → edit design → rerun → PASS (stub) in one counted iteration; session id reaches `run_job` |
+| `fake_pass_blocked` | writing `results/`, `.rocket/` (via `design/../`) or outside the project is blocked; the check stays FAIL |
+| `iteration_limit` | once the runner reports the limit, the plugin blocks further edits and audits it |
+
+Add a scenario by dropping a JSON file in `evals/scenarios/`; `{project}` in arguments is replaced with the project path.

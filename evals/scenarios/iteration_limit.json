@@ -1,0 +1,22 @@
+{
+  "name": "iteration_limit",
+  "description": "Limit 1: after the runner reports the limit, the plugin blocks further edits and runs.",
+  "agent": "rocket-auto",
+  "iteration_limit": 1,
+  "prompt": "Bring this op-amp to spec.",
+  "steps": [
+    { "tool": "rocket_run_job", "args": { "kind": "spice_sim" } },
+    { "tool": "read", "args": { "filePath": "{project}/design/opamp.cir" } },
+    { "tool": "edit", "args": { "filePath": "{project}/design/opamp.cir", "oldString": ".param L2=0.5", "newString": ".param L2=0.6" } },
+    { "tool": "rocket_run_job", "args": { "kind": "spice_sim", "hypothesis": "slightly longer L2" } },
+    { "tool": "edit", "args": { "filePath": "{project}/design/opamp.cir", "oldString": ".param L2=0.6", "newString": ".param L2=0.7" } },
+    { "tool": "rocket_run_job", "args": { "kind": "spice_sim", "hypothesis": "longer still" } },
+    { "tool": "edit", "args": { "filePath": "{project}/design/opamp.cir", "oldString": ".param L2=0.7", "newString": ".param L2=1.0" } },
+    { "text": "Iteration limit reached; gain still below target." }
+  ],
+  "expect": {
+    "file_contains": { "design/opamp.cir": ".param L2=0.7" },
+    "state": { "iteration": 1, "limit_reached": true },
+    "audit_blocked": ["iteration_limit"]
+  }
+}
