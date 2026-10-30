@@ -53,6 +53,11 @@ Reply shapes Fuel relies on:
    - `ROCKET_MODEL` (optional) overrides the default `meta/muse-spark-1.3` when installing the config
 4. The UI uses opencode's session, prompt, event-stream and permission-reply endpoints. `scripts/dev.sh <project> serve --port 4097` reproduces this locally.
 
+For UI work before the agent is ready: `evals/replay_server.py <recording>` serves a recorded session on
+`GET /event` in opencode's own event format (first event `rocket.replay` → show a REPLAY banner).
+Approval requests arrive as `permission.asked` (`properties.id`, `permission`, `patterns`) and are answered
+with `POST /permission/<id>/reply {"reply": "once" | "always" | "reject"}`.
+
 Things learned by running it (see `evals/`):
 - **The project must be the root of its own git repo.** Otherwise opencode matches `design/**` against the path from `/` and every design edit is denied.
 - **opencode npm-installs `@opencode-ai/plugin` into `.opencode/` on first open of a project.** That needs network; the offline installer must pre-seed it.

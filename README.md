@@ -155,6 +155,27 @@ tool calls in a scenario file, runs opencode with Fuel's config, plugin and the 
 To add one, drop a JSON file in `evals/scenarios/` (`{project}` in arguments becomes the project path).
 These test the harness, not the model's judgement.
 
+## Recorded sessions
+
+Real sessions can be recorded from opencode's event stream and replayed, for building the chat UI
+without a live agent and as a fallback if the model API is down during a demo.
+
+```bash
+# record: fresh demo, one prompt, every event until the session is idle (--approve answers approvals "once")
+ROCKET_MODEL=opencode/glm-5.3-flash-free python3 -I evals/record_session.py --approve \
+    --out evals/recordings/opamp-approval-free.jsonl
+
+# replay at real speed (or --speed 5) as an SSE stream on http://127.0.0.1:4199/event
+python3 -I evals/replay_server.py evals/recordings/opamp-approval-free.jsonl
+```
+
+A recording is JSONL: a header line (model, agent, prompt, `"recording": "rocket-fuel/v1"`) followed by
+`{"t_ms": ..., "event": {...}}` lines in opencode's own event format. Local paths are rewritten to `/project`.
+The replay stream starts with a `rocket.replay` event; anything displaying it must show a REPLAY banner.
+
+`evals/recordings/opamp-approval-free.jsonl` is a real 87-second session (free GLM model, stub runner,
+approval profile): it reads the constraints, runs the baseline, and asks four times before editing the design.
+
 ## Why opencode 1.19.5
 
 opencode 2.x is out, but its published plugin API has no tool-call hooks, which the protections above rely on.
