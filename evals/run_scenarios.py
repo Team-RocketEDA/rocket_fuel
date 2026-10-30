@@ -19,7 +19,6 @@ from pathlib import Path
 
 FUEL_HOME = Path(__file__).resolve().parents[1]
 SCENARIOS = FUEL_HOME / "evals" / "scenarios"
-DEMO = FUEL_HOME / "examples" / "opamp-demo"
 OPENCODE = FUEL_HOME / "node_modules" / ".bin" / "opencode"
 TIMEOUT_S = 180
 
@@ -82,7 +81,8 @@ class FakeModel(BaseHTTPRequestHandler):
 def prepare_project(scenario: dict, port: int) -> Path:
     project = Path(tempfile.mkdtemp(prefix=f"rocket-eval-{scenario['name']}-"))
     shutil.rmtree(project)
-    shutil.copytree(DEMO, project, ignore=shutil.ignore_patterns(".opencode", ".rocket"))
+    example = FUEL_HOME / "examples" / scenario.get("example", "opamp-demo")
+    shutil.copytree(example, project, ignore=shutil.ignore_patterns(".opencode", ".rocket"))
     (project / "results").mkdir()
 
     if "iteration_limit" in scenario:
@@ -140,10 +140,12 @@ def tool_results(requests: list[dict]) -> list[str]:
 def check(project: Path, expect: dict, results: list[str] | None = None) -> list[str]:
     failures = []
     for item in expect.get("tool_results", []):
-        step, needle = item["step"], item["contains"]
+        step = item["step"]
         got = results[step] if results and step < len(results) else ""
-        if needle not in got:
-            failures.append(f"tool step {step} result lacks {needle!r}: {got[:160]}")
+        if "contains" in item and item["contains"] not in got:
+            failures.append(f"tool step {step} result lacks {item['contains']!r}: {got[:160]}")
+        if "lacks" in item and item["lacks"] in got:
+            failures.append(f"tool step {step} result contains {item['lacks']!r}: {got[:160]}")
     for rel, needle in expect.get("file_contains", {}).items():
         text = (project / rel).read_text() if (project / rel).exists() else ""
         if needle not in text:
@@ -179,6 +181,10 @@ def run_scenario(path: Path) -> bool:
     scenario = json.loads(path.read_text())
     if scenario.get("engine") and not os.environ.get("ROCKET_ENGINE_HOME"):
         print(f"SKIP  {scenario['name']}  (set ROCKET_ENGINE_HOME to a rocket-engine checkout)")
+        return True
+    missing = [tool for tool in scenario.get("requires", []) if not shutil.which(tool)]
+    if missing:
+        print(f"SKIP  {scenario['name']}  (needs {', '.join(missing)} on PATH)")
         return True
     FakeModel.steps = scenario["steps"]
     FakeModel.requests = []

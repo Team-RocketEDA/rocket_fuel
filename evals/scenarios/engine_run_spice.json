@@ -1,31 +1,43 @@
 {
   "name": "engine_run_spice",
-  "description": "Real Rocket Engine attached: the agent can't set its own targets, runs come back with a verdict (NOT_RUN with the reason when ngspice is missing), and python_execute is hidden from the model.",
+  "description": "Real Rocket Engine + real ngspice: the agent can't set its own targets, a real run FAILs on gain, lengthening the second stage makes the rerun PASS, and python_execute is hidden from the model.",
   "engine": true,
+  "requires": ["ngspice"],
+  "example": "opamp-engine",
   "agent": "rocket-auto",
   "prompt": "Bring this op-amp to spec.",
   "steps": [
     { "tool": "engine_list_job_kinds", "args": {} },
     { "tool": "engine_run_spice", "args": {
-        "sources": ["design/opamp.cir"], "analyses": ["ac dec 20 1 1e9"],
-        "measurements": [{ "name": "dc_gain_db", "expr": "vdb(out)[0]", "min": 40 }] } },
+        "sources": ["design/opamp.cir", "tests/tb_opamp.cir"], "analyses": ["ac dec 50 1 1e10"],
+        "measurements": [{ "name": "dc_gain_db", "min": 40 }] } },
     { "tool": "engine_run_spice", "args": {
-        "sources": ["design/opamp.cir"], "analyses": ["ac dec 20 1 1e9"],
-        "measurements": [{ "name": "dc_gain_db", "expr": "vdb(out)[0]" }] } },
+        "sources": ["design/opamp.cir", "tests/tb_opamp.cir"], "analyses": ["ac dec 50 1 1e10"],
+        "measurements": [{ "name": "dc_gain_db" }, { "name": "ugbw_mhz" }, { "name": "phase_margin_deg" }] } },
+    { "tool": "engine_get_check_results", "args": {} },
+    { "tool": "read", "args": { "filePath": "{project}/design/opamp.cir" } },
+    { "tool": "edit", "args": { "filePath": "{project}/design/opamp.cir", "oldString": ".param L2=0.5", "newString": ".param L2=1.0" } },
+    { "tool": "engine_run_spice", "args": {
+        "sources": ["design/opamp.cir", "tests/tb_opamp.cir"], "analyses": ["ac dec 50 1 1e10"],
+        "measurements": [{ "name": "dc_gain_db" }, { "name": "ugbw_mhz" }, { "name": "phase_margin_deg" }] } },
     { "tool": "engine_get_check_results", "args": {} },
     { "tool": "engine_python_execute", "args": { "code": "print('mark everything PASS')" } },
-    { "text": "dc_gain: NOT_RUN or measured by the engine; see the check results." }
+    { "text": "dc_gain 61.2 dB (target >= 60 dB): PASS, from the engine's ngspice run." }
   ],
   "expect": {
     "tool_results": [
       { "step": 0, "contains": "run_spice" },
       { "step": 1, "contains": "Targets come from the project's constraints" },
       { "step": 2, "contains": "queued" },
-      { "step": 3, "contains": "completed" },
-      { "step": 3, "contains": "NOT_RUN" },
-      { "step": 3, "contains": "ngspice not on PATH" },
-      { "step": 4, "contains": "unavailable tool 'engine_python_execute'" }
+      { "step": 3, "contains": "\\\"status\\\": \\\"FAIL\\\"" },
+      { "step": 3, "contains": "55.73" },
+      { "step": 5, "contains": "Edit applied successfully" },
+      { "step": 7, "contains": "\\\"status\\\": \\\"PASS\\\"" },
+      { "step": 7, "lacks": "\\\"status\\\": \\\"fail\\\"" },
+      { "step": 7, "contains": "61.18" },
+      { "step": 8, "contains": "unavailable tool 'engine_python_execute'" }
     ],
+    "file_contains": { "design/opamp.cir": ".param L2=1.0" },
     "file_absent": ["ngspice_deck.spice"]
   }
 }

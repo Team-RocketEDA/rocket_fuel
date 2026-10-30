@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 # Copy the op-amp demo into its own git repo (opencode matches permission paths from the git root).
-# Usage: scripts/new-demo.sh [dest-dir]   (default: .opencode-home/projects/opamp-demo; recreated each run)
+# Usage: scripts/new-demo.sh [dest-dir] [example]   (example: opamp-demo (default) or opamp-engine;
+#        dest defaults to .opencode-home/projects/<example>; recreated each run)
 set -euo pipefail
 
 FUEL_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="${1:-$FUEL_HOME/.opencode-home/projects/opamp-demo}"
+EXAMPLE="${2:-opamp-demo}"
+DEST="${1:-$FUEL_HOME/.opencode-home/projects/$EXAMPLE}"
 
 rm -rf "$DEST"
 mkdir -p "$(dirname "$DEST")"
-cp -r "$FUEL_HOME/examples/opamp-demo" "$DEST"
+cp -r "$FUEL_HOME/examples/$EXAMPLE" "$DEST"
 rm -rf "$DEST/.opencode" "$DEST/.rocket"
 mkdir -p "$DEST/results"
 git -C "$DEST" init -q

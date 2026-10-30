@@ -161,7 +161,7 @@ tool calls in a scenario file, runs opencode with Fuel's config, plugin and the 
 | `fake_pass_blocked` | writing `results/`, `.rocket/` (via `design/../`) or outside the project is blocked; the check stays FAIL |
 | `iteration_limit` | after the runner reports the limit, the next edit is blocked and audited |
 | `ip_register_tamper` | a registered block stays UNVERIFIED; editing or overwriting `ip/manifest.yaml` is refused |
-| `engine_run_spice` | with the real engine (needs `ROCKET_ENGINE_HOME`, else skipped): agent-set targets refused, run queued then completed with a verdict, `python_execute` hidden |
+| `engine_run_spice` | real engine + ngspice (skipped without `ROCKET_ENGINE_HOME` or ngspice): agent-set targets refused, real FAIL at 55.73 dB, L2 0.5 → 1.0 µm, rerun PASS at 61.18 dB, `python_execute` hidden |
 
 To add one, drop a JSON file in `evals/scenarios/` (`{project}` in arguments becomes the project path).
 These test the harness, not the model's judgement.
@@ -173,18 +173,29 @@ By default the simulation tools come from `mcp-stub/` (a toy model). With `ROCKE
 `uv sync`), Fuel attaches the engine's MCP server instead:
 
 ```bash
-ROCKET_ENGINE_HOME=../rocket-engine scripts/dev.sh "$(scripts/new-demo.sh)"
+ROCKET_ENGINE_HOME=../rocket-engine scripts/dev.sh "$(scripts/new-demo.sh "" opamp-engine)"
 ```
+
+`examples/opamp-engine/` is a two-stage op-amp on generic level-1 models (no foundry PDK needed) with an open-loop
+AC testbench. Its `constraints.yaml` gives each check both a target and how it is measured (`expr`, plus ngspice
+`control` lines such as `meas ac ugbw_hz when vdb(out)=0`); the engine uses those, not the agent's. With real ngspice:
+
+| L2 (second-stage length) | DC gain (≥ 60 dB) | UGBW (≥ 10 MHz) | Phase margin (≥ 60°) | Verdict |
+|---|---|---|---|---|
+| 0.5 µm (starting point) | 55.73 dB | 33.57 MHz | 67.76° | FAIL |
+| 1.0 µm | 61.18 dB | 34.06 MHz | 65.64° | PASS |
 
 - the engine provides `engine_run_spice`, `engine_get_job_status`, `engine_get_logs`, `engine_get_check_results`, …;
   the stub keeps only the workflow tools (constraints, status card, propose/apply revision, IP) and withdraws its own runner
-- the engine is bound to the project: it reads targets from `constraints.yaml` and refuses `min`/`max` from the agent,
+- the engine is bound to the project: it reads targets and measurement formulas from `constraints.yaml` and refuses
+  `min`/`max` or a different `expr` from the agent,
   resolves sources inside the project, and writes run files under `results/engine-runs/`
 - `engine_python_execute` is denied (opencode hides it from the model) until approvals for it exist
 - the prompt gains a short engine section (`harness/prompts/runner-engine.md`)
 - not yet: the engine doesn't count repair iterations, so the limit relies on the prompt and opencode's step cap
 
-Without ngspice installed, `engine_run_spice` honestly returns NOT_RUN (`missing_dependency`).
+Without ngspice installed, `engine_run_spice` honestly returns NOT_RUN (`missing_dependency`); the `engine_run_spice`
+scenario is skipped then.
 
 ## UI client (`client/`)
 
