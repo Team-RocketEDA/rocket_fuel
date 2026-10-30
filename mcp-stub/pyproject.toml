@@ -1,0 +1,19 @@
+[project]
+name = "rocket-stub"
+version = "0.1.0"
+description = "Stand-in for Rocket Engine's MCP bridge, so Rocket Fuel can be developed and tested before the real engine exists."
+requires-python = ">=3.12"
+dependencies = [
+    "mcp>=2.3,<3",
+    "ruamel.yaml",
+]
+
+[project.scripts]
+rocket-stub = "rocket_stub.server:main"
+
+[dependency-groups]
+dev = ["pytest"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

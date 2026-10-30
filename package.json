@@ -1,0 +1,11 @@
+{
+  "name": "rocket-fuel",
+  "private": true,
+  "description": "Rocket Fuel: the RocketEDA agent harness (pinned opencode + config, prompts, plugin).",
+  "scripts": {
+    "opencode": "opencode"
+  },
+  "devDependencies": {
+    "opencode-ai": "1.19.5"
+  }
+}

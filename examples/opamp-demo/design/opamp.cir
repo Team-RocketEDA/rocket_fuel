@@ -1,0 +1,17 @@
+* Two-stage Miller op-amp, SKY130 1.8 V (deliberately under-designed starting point)
+* L2 = second-stage channel length in um, CC = Miller compensation cap in pF
+.param L2=0.5
+.param CC=1.0
+
+.subckt opamp inp inn out vdd vss
+* first stage: differential pair with current-mirror load
+XM1 n1 inn tail vss sky130_fd_pr__nfet_01v8 W=4 L=0.5
+XM2 n2 inp tail vss sky130_fd_pr__nfet_01v8 W=4 L=0.5
+XM3 n1 n1 vdd vdd sky130_fd_pr__pfet_01v8 W=8 L=0.5
+XM4 n2 n1 vdd vdd sky130_fd_pr__pfet_01v8 W=8 L=0.5
+XM5 tail bias vss vss sky130_fd_pr__nfet_01v8 W=2 L=1
+* second stage: common source
+XM6 out n2 vdd vdd sky130_fd_pr__pfet_01v8 W=20 L={L2}
+XM7 out bias vss vss sky130_fd_pr__nfet_01v8 W=10 L={L2}
+CC n2 out {CC}p
+.ends opamp

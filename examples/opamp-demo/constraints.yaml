@@ -1,0 +1,30 @@
+schema: rocketeda/constraints/v0.1
+pdk: sky130A
+agent:
+  iteration_limit: 3
+  mode: approval
+checks:
+  - id: opamp.dc_gain
+    title: Open-loop DC gain
+    metric: dc_gain_db
+    comparison: ">="
+    value: 60
+    unit: dB
+    required: true
+    job_kind: spice_sim
+  - id: opamp.phase_margin
+    title: Phase margin
+    metric: phase_margin_deg
+    comparison: ">="
+    value: 60
+    unit: deg
+    required: true
+    job_kind: spice_sim
+  - id: opamp.ugbw
+    title: Unity-gain bandwidth
+    metric: ugbw_mhz
+    comparison: ">="
+    value: 10
+    unit: MHz
+    required: true
+    job_kind: spice_sim

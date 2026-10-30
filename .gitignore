@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+
+# generated per project by scripts/install-into-project.sh
+examples/*/.opencode/
+examples/*/.rocket/
+.opencode-home/
