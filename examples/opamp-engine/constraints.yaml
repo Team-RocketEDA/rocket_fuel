@@ -1,6 +1,7 @@
 schema: rocketeda/constraints/v0.1
 # Generic level-1 models (no foundry PDK needed). Run with the real Rocket Engine and ngspice.
 pdk: none
+domains: [analog]
 title: Two-stage op-amp
 description: Two-stage Miller op-amp on generic level-1 models, checked with ngspice.
 agent:
