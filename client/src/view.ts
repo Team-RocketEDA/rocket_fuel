@@ -98,6 +98,12 @@ const LABELS: Record<string, string> = {
   rocket_ip_search: "Search IP library",
   rocket_ip_get: "Read IP block",
   rocket_ip_register: "Register IP block",
+  engine_run_spice: "Run simulation",
+  engine_get_job_status: "Read result",
+  engine_get_check_results: "Read check results",
+  engine_get_logs: "Search logs",
+  engine_list_job_kinds: "List job kinds",
+  engine_get_project_snapshot: "Read project state",
 }
 
 export function toolLabel(tool: string): string {
