@@ -50,3 +50,18 @@ test("subscribe parses events split across chunks", async () => {
   await client.subscribe((event) => types.push(event.type))
   expect(types).toEqual(["server.connected", "session.status"])
 })
+
+test("history turns stored messages into reducer events", async () => {
+  const history = new FuelClient({
+    baseUrl: "http://x",
+    fetch: (async (url: string) => {
+      if (url.endsWith("/session")) return Response.json([{ id: "ses_old", time: { updated: 1 } }, { id: "ses_new", time: { updated: 2 } }])
+      return Response.json([{ info: { id: "msg_1", role: "user" }, parts: [{ id: "p1", messageID: "msg_1", type: "text", text: "hi" }] }])
+    }) as unknown as typeof fetch,
+  })
+  expect(await history.latestSession()).toBe("ses_new")
+  const { emptyView, reduce } = await import("../src/view")
+  const view = (await history.history("ses_new")).reduce(reduce, emptyView())
+  expect(view.sessionId).toBe("ses_new")
+  expect(view.messages).toEqual([{ id: "p1", role: "user", text: "hi", time: expect.any(Number) }])
+})

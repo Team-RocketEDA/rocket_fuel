@@ -46,6 +46,23 @@ export class FuelClient {
     await this.request("POST", `/permission/${permissionId}/reply`, message ? { reply, message } : { reply })
   }
 
+  // Most recently updated session, so a reloaded UI can pick the conversation back up.
+  async latestSession(): Promise<string | undefined> {
+    const sessions: { id: string; time: { updated: number } }[] = await this.request("GET", "/session")
+    return sessions.sort((a, b) => b.time.updated - a.time.updated)[0]?.id
+  }
+
+  // A session's stored messages as the events that produced them, for reduce().
+  async history(sessionId: string): Promise<OpencodeEvent[]> {
+    const messages: { info: Record<string, any>; parts: Record<string, any>[] }[] = await this.request("GET", `/session/${sessionId}/message`)
+    const events: OpencodeEvent[] = [{ type: "session.created", properties: { sessionID: sessionId, info: { id: sessionId } } }]
+    for (const message of messages) {
+      events.push({ type: "message.updated", properties: { sessionID: sessionId, info: message.info } })
+      for (const part of message.parts) events.push({ type: "message.part.updated", properties: { sessionID: sessionId, part } })
+    }
+    return events
+  }
+
   async abort(sessionId: string): Promise<void> {
     await this.request("POST", `/session/${sessionId}/abort`)
   }

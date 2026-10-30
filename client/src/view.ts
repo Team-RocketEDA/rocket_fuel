@@ -264,7 +264,8 @@ export function reduce(view: SessionView, event: OpencodeEvent, time = Date.now(
     case "message.updated":
       return props.info?.id ? { ...view, roles: { ...view.roles, [props.info.id]: props.info.role } } : view
     case "message.part.updated":
-      return props.part ? applyPart(view, props.part, time) : view
+      // Prefer the part's own timestamp, so restored history keeps messages and tool calls in order.
+      return props.part ? applyPart(view, props.part, props.part.time?.start ?? props.time ?? time) : view
     case "message.part.delta": {
       if (view.partKinds[props.partID] !== "text" || props.field !== "text") return view
       const message = view.messages.find((m) => m.id === props.partID)
