@@ -68,17 +68,25 @@ Things learned by running it (see `evals/`):
 - **opencode npm-installs `@opencode-ai/plugin` into `.opencode/` on first open of a project.** That needs network; the offline installer must pre-seed it.
 - MCP results reach plugins in a different field from built-in tool output; Fuel's plugin searches the whole result.
 
-## Engine status (2026-10-30)
+## Engine status (2026-10-31)
 
-Rocket Engine's MCP server (`rocket_engine.adapters.mcp.server`, branch `GREEN-the-tests`) is connectable.
-Fuel attaches it with `ROCKET_ENGINE_HOME` (see README). Fixes proposed in rocket-engine branch `fuel-mcp-fixes`:
-queued jobs run under their ack's run_id, `get_job_status`/`get_check_results`/`get_logs`/`list_job_kinds` wired,
-measurements kept on PASS, run_spice targets from `constraints.yaml` (caller min/max refused), argument schemas,
-engine errors as JSON, `--project`/`--project-dir` binding with sources confined to the project.
+Rocket Engine's MCP server (`rocket_engine.adapters.mcp.server`) is connectable. Its v0.2 contract (PRD
+`tools-research/frontend-tooling-spec.md` §10, branch `GREEN-the-tests`) makes runs two-phase: an operation such as
+`run_spice` admits a job and returns a `request_id`; `run_job(request_id)` executes it and returns the verdict.
+Fuel attaches it with `ROCKET_ENGINE_HOME` (see README). The rocket-engine branch `fuel-mcp-fixes` (PR #3, rebased onto
+that design) adds what Fuel and the IDE rely on:
+- `--project`/`--project-dir` binding: project_id and expected_revision filled in, sources confined to the project
+- run_spice targets and measurement formulas from `constraints.yaml` (caller min/max/expr refused)
+- `get_job_status`/`get_check_results`/`get_logs`/`list_job_kinds` wired, measurements kept on PASS, argument schemas
+- evidence per run in `results/engine-runs/<run_id>.json` (verdict, source commit, log) plus waveform datasets
+  (`<run_id>-ac.raw`, ngspice ASCII rawfiles) that the IDE plots; `--call` for the IDE's own Run checks
 
-Still open on the engine side: one engine shared by the IDE and MCP (today each MCP process has its own in-memory
-engine), persistence and real revisions (hard-coded `p12`), repair-iteration counting, the workflow tools Fuel's stub
-still provides (constraints, status card, revisions, IP), and "no measurement output" being FAIL rather than NOT_RUN.
+Fuel counts each executed `engine_run_job` against `agent.iteration_limit` and denies the engine's document CRUD
+(`write_doc`, ...), which would bypass edit approvals.
+
+Still open on the engine side: one engine shared by the IDE and MCP (each MCP process has its own engine), which store
+is the source of truth for project files (engine CRUD documents or the project's git tree), and the workflow tools
+Fuel's stub still provides (constraints, status card, revisions, IP).
 
 ## Open questions to settle with the team
 
