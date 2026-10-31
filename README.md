@@ -59,7 +59,18 @@ Choosing a model:
 |---|---|---|---|
 | Muse Spark 1.3 | (default) `meta/muse-spark-1.3` | Meta key | real designs; prompts are not used for training |
 | Muse Spark 1.3 Contributor | `meta/muse-spark-1.3-contributor` | Meta key | development and rehearsals on demo data: ~12–20× cheaper, but Meta may train on prompts and outputs; 150 requests/min |
-| opencode free models | e.g. `opencode/glm-5.3-flash-free` | nothing | trying the loop with no key at all (not Muse) |
+| opencode free models | e.g. `opencode/beam-free` | nothing | trying the loop with no key at all (not Muse); one shared quota per machine |
+| any other provider opencode knows | e.g. `openrouter/google/gemma-4-31b-it:free`, `groq/…`, `anthropic/…` | that provider's usual key in `.env` (`OPENROUTER_API_KEY`, …) | a fallback when the free quota runs out |
+
+Before a demo, check the machine and the model in one go:
+
+```bash
+python3 -I scripts/doctor.py            # tools, engine and UI checkouts, and a live "pong" from ROCKET_MODEL
+python3 -I scripts/doctor.py --no-model # skip the model call
+```
+
+It prints a fix for each problem, e.g. a used-up free quota, a missing or rejected key, or an engine checkout
+without the project-bound MCP server.
 
 ```bash
 ROCKET_MODEL=meta/muse-spark-1.3-contributor scripts/dev.sh "$(scripts/new-demo.sh)"
