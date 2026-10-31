@@ -144,3 +144,17 @@ describe("reduce", () => {
     expect(view).toMatchObject({ status: "error", error: "Unauthorized" })
   })
 })
+
+test("each executed engine run counts as one repair attempt", () => {
+  const run = (callID: string, output: unknown) => ({
+    type: "message.part.updated",
+    properties: { part: { id: callID, callID, tool: "engine_run_job", type: "tool", state: { status: "completed", input: { request_id: "r" }, output: JSON.stringify(output) } } },
+  })
+  let view = emptyView()
+  view = reduce(view, run("c1", { run_id: "a", state: "completed", verdict: { status: "FAIL" } }))
+  view = reduce(view, run("c2", { run_id: "b", state: "completed", verdict: { status: "PASS" } }))
+  view = reduce(view, run("c2", { run_id: "b", state: "completed", verdict: { status: "PASS" } }))
+  view = reduce(view, run("c3", { ok: false, code: "unknown_request" }))
+  expect(view.iteration?.used).toBe(2)
+  expect(view.steps.map((s) => s.label)).toEqual(["Run simulation", "Run simulation", "Run simulation"])
+})

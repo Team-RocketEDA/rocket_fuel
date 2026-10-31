@@ -98,7 +98,8 @@ const LABELS: Record<string, string> = {
   rocket_ip_search: "Search IP library",
   rocket_ip_get: "Read IP block",
   rocket_ip_register: "Register IP block",
-  engine_run_spice: "Run simulation",
+  engine_run_spice: "Prepare simulation",
+  engine_run_job: "Run simulation",
   engine_get_job_status: "Read result",
   engine_get_check_results: "Read check results",
   engine_get_logs: "Search logs",
@@ -151,6 +152,12 @@ function applyToolResult(view: SessionView, tool: string, input: Record<string, 
       iteration: { used: output.iteration, limit: output.iteration_limit, left: output.iterations_left, limitReached: !!output.limit_reached },
     }
   }
+  // Each executed engine run is one repair attempt; the plugin locks the session at the limit.
+  if (tool === "engine_run_job" && output.verdict) {
+    const used = (next.iteration?.used ?? 0) + 1
+    const limit = next.iteration?.limit
+    next = { ...next, iteration: { used, limit, left: limit === undefined ? undefined : Math.max(0, limit - used), limitReached: limit !== undefined && used >= limit } }
+  }
   if (tool === "rocket_propose_revision" && output.revision_id) {
     next = {
       ...next,
@@ -190,7 +197,10 @@ function applyPart(view: SessionView, part: any, time: number): SessionView {
       time: existing?.time ?? state.time?.start ?? time,
     }
     next = { ...next, steps: upsert(next.steps, step) }
-    if (state.status === "completed") next = applyToolResult(next, part.tool, step.input, parseJson(state.output))
+    // Apply a result once: the same completed part can arrive again (restored history, then the live stream).
+    if (state.status === "completed" && existing?.status !== "completed") {
+      next = applyToolResult(next, part.tool, step.input, parseJson(state.output))
+    }
     // The approval for apply_revision can arrive before the call's arguments do.
     const waiting = next.approvals.find((a) => a.callId === part.callID && !a.diff)
     const rev = next.revisions[step.input.revision_id as string]

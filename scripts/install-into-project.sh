@@ -35,6 +35,9 @@ config["mcp"]["engine"] = {
 }
 config["permission"]["engine_*"] = "allow"
 config["permission"]["engine_python_execute"] = "deny"  # no approval flow over MCP yet
+# The engine's document CRUD would change design files without the approval and diff the edit tools give.
+for tool in ("write_doc", "delete_doc", "apply_mutations", "create_project"):
+    config["permission"][f"engine_{tool}"] = "deny"
 json.dump(config, open(path, "w"), indent=2)
 PY
   cat "$FUEL_HOME/harness/prompts/runner-engine.md" >> "$DEST/prompts/rocket-agent.md"

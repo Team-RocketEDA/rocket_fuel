@@ -1,0 +1,30 @@
+{
+  "name": "engine_iteration_limit",
+  "description": "Real engine, limit 1: one executed run_job spends the only repair attempt, so the plugin blocks the next edit and run; the engine's document CRUD is hidden from the model.",
+  "engine": true,
+  "requires": ["ngspice"],
+  "example": "opamp-engine",
+  "agent": "rocket-auto",
+  "iteration_limit": 1,
+  "prompt": "Bring this op-amp to spec.",
+  "steps": [
+    { "tool": "engine_run_spice", "args": {
+        "sources": ["design/opamp.cir", "tests/tb_opamp.cir"], "analyses": ["ac dec 50 1 1e10"],
+        "measurements": [{ "name": "dc_gain_db" }] } },
+    { "tool": "engine_run_job", "args": { "request_id": "{request_id}" } },
+    { "tool": "edit", "args": { "filePath": "{project}/design/opamp.cir", "oldString": ".param L2=0.5", "newString": ".param L2=1.0" } },
+    { "tool": "engine_run_job", "args": { "request_id": "{request_id}" } },
+    { "tool": "engine_write_doc", "args": { "path": "design/opamp.cir", "content": ".param L2=1.0" } },
+    { "text": "Iteration limit reached; gain still below target." }
+  ],
+  "expect": {
+    "tool_results": [
+      { "step": 1, "contains": "\\\"status\\\": \\\"FAIL\\\"" },
+      { "step": 2, "contains": "Repair iteration limit reached" },
+      { "step": 3, "contains": "Repair iteration limit reached" },
+      { "step": 4, "contains": "unavailable tool 'engine_write_doc'" }
+    ],
+    "file_contains": { "design/opamp.cir": ".param L2=0.5" },
+    "audit_blocked": ["iteration_limit"]
+  }
+}

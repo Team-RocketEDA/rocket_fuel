@@ -14,9 +14,10 @@ export const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply
 // Tools that change the design or spend a repair iteration; blocked once a session hits its limit.
 export const LIMITED_TOOLS = new Set([...EDIT_TOOLS, "rocket_run_job", "rocket_apply_revision"])
 
-// Engine operations (engine_run_spice, engine_run_drc, ...) also spend repair iterations.
+// Engine runs are two-phase: engine_run_spice (and the other engine_run_* operations) only admit a job,
+// engine_run_job executes it. Only execution spends a repair iteration.
 export function isLimited(tool: string): boolean {
-  return LIMITED_TOOLS.has(tool) || tool.startsWith("engine_run_")
+  return LIMITED_TOOLS.has(tool) || tool === "engine_run_job"
 }
 
 // Rocket tools that accept the session id the plugin attaches.
@@ -81,4 +82,10 @@ export function editTargets(args: Record<string, unknown>): string[] {
 
 export function hitIterationLimit(toolOutput: string): boolean {
   return toolOutput.includes("iteration_limit_reached")
+}
+
+// agent.iteration_limit from constraints.yaml; the fallback when the file or the key is missing.
+export function iterationLimit(constraintsYaml: string | undefined, fallback = 3): number {
+  const found = constraintsYaml?.match(/^\s*iteration_limit:\s*(\d+)\s*(?:#.*)?$/m)
+  return found ? Number(found[1]) : fallback
 }

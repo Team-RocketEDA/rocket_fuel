@@ -9,6 +9,7 @@ Usage: python3 -I evals/run_scenarios.py [scenario-name ...]
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -56,6 +57,11 @@ class FakeModel(BaseHTTPRequestHandler):
         else:
             done = sum(1 for m in body["messages"] if m.get("role") == "tool")
             step = self.steps[done] if done < len(self.steps) else {"text": "Script finished."}
+            # "{request_id}" in a step's args is the one from the latest acknowledgement, as a model would read it.
+            acks = [m for m in body["messages"] if m.get("role") == "tool" and "request_id" in str(m.get("content"))]
+            if acks:
+                found = re.search(r'request_id\\?": \\?"([^"\\]+)', str(acks[-1]["content"]))
+                self.request_id = found.group(1) if found else ""
         chunks = self._chunks(step, done if body.get("tools") else 0)
 
         self.send_response(200)
@@ -73,6 +79,7 @@ class FakeModel(BaseHTTPRequestHandler):
         if "text" in step:
             return [chunk({"role": "assistant", "content": step["text"]}), chunk({}, "stop")]
         args = json.dumps(step["args"]).replace("{project}", self.project)
+        args = args.replace("{request_id}", getattr(self, "request_id", ""))
         call = {"index": 0, "id": f"call_{index}", "type": "function",
                 "function": {"name": step["tool"], "arguments": args}}
         return [chunk({"role": "assistant", "tool_calls": [call]}), chunk({}, "tool_calls")]
