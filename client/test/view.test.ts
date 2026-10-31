@@ -158,3 +158,13 @@ test("each executed engine run counts as one repair attempt", () => {
   expect(view.iteration?.used).toBe(2)
   expect(view.steps.map((s) => s.label)).toEqual(["Run simulation", "Run simulation", "Run simulation"])
 })
+
+test("a retrying model call is visible, and clears when the session moves on", () => {
+  const status = (value: Record<string, unknown>) => ({ type: "session.status", properties: { sessionID: "s", status: value } })
+  let view = reduce(emptyView("s"), status({ type: "busy" }))
+  view = reduce(view, status({ type: "retry", attempt: 2, message: "Free usage limit reached.", next: 1793430000000 }))
+  expect(view.status).toBe("busy")
+  expect(view.retry).toEqual({ attempt: 2, message: "Free usage limit reached.", next: 1793430000000 })
+  view = reduce(view, status({ type: "idle" }))
+  expect(view.retry).toBeUndefined()
+})

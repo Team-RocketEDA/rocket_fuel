@@ -45,6 +45,8 @@ export type SessionView = {
   sessionId?: string
   status: "idle" | "busy" | "error"
   error?: string
+  // Set while opencode retries a failed model call (rate limit, used-up free quota, provider down).
+  retry?: { attempt: number; message: string; next?: number }
   agent?: string
   model?: string
   replay?: { recordedAt?: string; model?: string; note?: string }
@@ -270,11 +272,15 @@ export function reduce(view: SessionView, event: OpencodeEvent, time = Date.now(
         model: props.info?.model ? `${props.info.model.providerID}/${props.info.model.id}` : view.model,
       }
     case "session.status": {
-      const type = props.status?.type
-      return type === "busy" || type === "idle" ? { ...view, status: type } : view
+      const status = props.status ?? {}
+      // A retry keeps the session busy, but the user should see why nothing is happening.
+      if (status.type === "retry") {
+        return { ...view, status: "busy", retry: { attempt: status.attempt ?? 1, message: status.message ?? "Model call failed", next: status.next } }
+      }
+      return status.type === "busy" || status.type === "idle" ? { ...view, status: status.type, retry: undefined } : view
     }
     case "session.idle":
-      return { ...view, status: view.status === "error" ? "error" : "idle" }
+      return { ...view, status: view.status === "error" ? "error" : "idle", retry: undefined }
     case "session.error":
       return { ...view, status: "error", error: props.error?.data?.message ?? props.error?.name ?? "Agent error" }
     case "message.updated": {

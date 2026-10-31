@@ -60,6 +60,10 @@ export class FuelClient {
       events.push({ type: "message.updated", properties: { sessionID: sessionId, info: message.info } })
       for (const part of message.parts) events.push({ type: "message.part.updated", properties: { sessionID: sessionId, part } })
     }
+    // Where the session is now (busy, or retrying a failed model call); idle sessions aren't listed.
+    const statuses: Record<string, unknown> = await this.request("GET", "/session/status")
+    const status = statuses?.[sessionId]
+    if (status) events.push({ type: "session.status", properties: { sessionID: sessionId, status } })
     return events
   }
 
