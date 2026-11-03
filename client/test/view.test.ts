@@ -156,7 +156,22 @@ test("each executed engine run counts as one repair attempt", () => {
   view = reduce(view, run("c2", { run_id: "b", state: "completed", verdict: { status: "PASS" } }))
   view = reduce(view, run("c3", { ok: false, code: "unknown_request" }))
   expect(view.iteration?.used).toBe(2)
-  expect(view.steps.map((s) => s.label)).toEqual(["Run simulation", "Run simulation", "Run simulation"])
+  expect(view.steps.map((s) => s.label)).toEqual(["Record result", "Record result", "Record result"])
+})
+
+test("a run reported by run_spice and fetched by run_job counts once; one that did not execute counts zero", () => {
+  const call = (callID: string, tool: string, output: unknown) => ({
+    type: "message.part.updated",
+    properties: { part: { id: callID, callID, tool, type: "tool", state: { status: "completed", input: {}, output: JSON.stringify(output) } } },
+  })
+  let view = emptyView()
+  view = reduce(view, call("c1", "engine_run_spice", { request_id: "r1", run_id: "a", verdict: { status: "FAIL" } }))
+  view = reduce(view, call("c2", "engine_run_job", { run_id: "a", verdict: { status: "FAIL" } }))
+  expect(view.iteration?.used).toBe(1)
+  view = reduce(view, call("c3", "engine_run_optical", { request_id: "r2", run_id: "b", verdict: { status: "NOT_RUN" } }))
+  expect(view.iteration?.used).toBe(1)
+  view = reduce(view, call("c4", "engine_run_optical", { request_id: "r3", run_id: "c", verdict: { status: "PASS" } }))
+  expect(view.iteration?.used).toBe(2)
 })
 
 test("a retrying model call is visible, and clears when the session moves on", () => {

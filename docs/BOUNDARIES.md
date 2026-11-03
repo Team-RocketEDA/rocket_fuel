@@ -68,21 +68,24 @@ Things learned by running it (see `evals/`):
 - **opencode npm-installs `@opencode-ai/plugin` into `.opencode/` on first open of a project.** That needs network; the offline installer must pre-seed it.
 - MCP results reach plugins in a different field from built-in tool output; Fuel's plugin searches the whole result.
 
-## Engine status (2026-10-31)
+## Engine status (2026-11-03)
 
-Rocket Engine's MCP server (`rocket_engine.adapters.mcp.server`) is connectable. Its v0.2 contract (PRD
-`tools-research/frontend-tooling-spec.md` §10, branch `GREEN-the-tests`) makes runs two-phase: an operation such as
-`run_spice` admits a job and returns a `request_id`; `run_job(request_id)` executes it and returns the verdict.
-Fuel attaches it with `ROCKET_ENGINE_HOME` (see README). The rocket-engine branch `fuel-mcp-fixes` (PR #3, rebased onto
-that design) adds what Fuel and the IDE rely on:
+Rocket Engine's MCP server (`rocket_engine.adapters.mcp.server`, branch `GREEN-the-tests`) is connectable; Fuel attaches
+it with `ROCKET_ENGINE_HOME` (see README). An operation such as `run_spice` now executes when called and returns the
+verdict, and the engine writes its evidence then. `run_job(request_id)` fetches that run, or executes a deferred one.
+What Fuel and the IDE rely on:
 - `--project`/`--project-dir` binding: project_id and expected_revision filled in, sources confined to the project
 - run_spice targets and measurement formulas from `constraints.yaml` (caller min/max/expr refused)
 - `get_job_status`/`get_check_results`/`get_logs`/`list_job_kinds` wired, measurements kept on PASS, argument schemas
-- evidence per run in `results/engine-runs/<run_id>.json` (verdict, source commit, log) plus waveform datasets
-  (`<run_id>-ac.raw`, ngspice ASCII rawfiles) that the IDE plots; `--call` for the IDE's own Run checks
+- evidence per run in `results/engine-runs/<run_id>.json` (verdict, source commit, log); `--call` for the IDE's own Run checks
 
-Fuel counts each executed `engine_run_job` against `agent.iteration_limit` and denies the engine's document CRUD
-(`write_doc`, ...), which would bypass edit approvals.
+Missing from `GREEN-the-tests`, only on the conflicted `fuel-mcp-fixes` (PR #3): the waveform datasets
+(`<run_id>-ac.raw`) that the IDE plots.
+
+Fuel counts each executed run once per `run_id`, on any `engine_run_*` call, against `agent.iteration_limit`; NOT_RUN and
+UNSUPPORTED verdicts cost nothing. At the limit only a fetch of an already counted run is allowed. The agent's engine tools are an allowlist (`scripts/install-into-project.sh`): runs and reads,
+with `generate_views` on ask. The engine's editor verbs, document CRUD, `rewind` and `write_settings` stay hidden because
+they would bypass edit approvals, and so does any operation the engine adds later until someone reviews it.
 
 Still open on the engine side: one engine shared by the IDE and MCP (each MCP process has its own engine), which store
 is the source of truth for project files (engine CRUD documents or the project's git tree), and the workflow tools

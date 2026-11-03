@@ -1,0 +1,84 @@
+{
+  "name": "engine_tool_surface",
+  "description": "Real engine: the agent's engine tools are an allowlist, so an operation the engine adds later stays hidden until someone reviews it. Reads and runs are available; editor verbs, ledger rewinds and settings writes are not, because they would change the project without the approval and diff the edit tools give.",
+  "engine": true,
+  "requires": [
+    "ngspice"
+  ],
+  "example": "opamp-engine",
+  "agent": "rocket-auto",
+  "prompt": "Bring this op-amp to spec.",
+  "steps": [
+    {
+      "tool": "engine_list_job_kinds",
+      "args": {}
+    },
+    {
+      "tool": "engine_get_check_results",
+      "args": {}
+    },
+    {
+      "tool": "engine_place_wire",
+      "args": {}
+    },
+    {
+      "tool": "engine_apply_transaction",
+      "args": {}
+    },
+    {
+      "tool": "engine_rewind",
+      "args": {}
+    },
+    {
+      "tool": "engine_discard_run",
+      "args": {}
+    },
+    {
+      "tool": "engine_write_settings",
+      "args": {}
+    },
+    {
+      "tool": "engine_ip_register",
+      "args": {}
+    },
+    {
+      "text": "Done."
+    }
+  ],
+  "expect": {
+    "tool_results": [
+      {
+        "step": 0,
+        "contains": "run_spice"
+      },
+      {
+        "step": 1,
+        "lacks": "unavailable tool"
+      },
+      {
+        "step": 2,
+        "contains": "unavailable tool 'engine_place_wire'"
+      },
+      {
+        "step": 3,
+        "contains": "unavailable tool 'engine_apply_transaction'"
+      },
+      {
+        "step": 4,
+        "contains": "unavailable tool 'engine_rewind'"
+      },
+      {
+        "step": 5,
+        "contains": "unavailable tool 'engine_discard_run'"
+      },
+      {
+        "step": 6,
+        "contains": "unavailable tool 'engine_write_settings'"
+      },
+      {
+        "step": 7,
+        "contains": "unavailable tool 'engine_ip_register'"
+      }
+    ]
+  }
+}

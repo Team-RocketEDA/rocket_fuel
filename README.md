@@ -172,8 +172,9 @@ tool calls in a scenario file, runs opencode with Fuel's config, plugin and the 
 | `fake_pass_blocked` | writing `results/`, `.rocket/` (via `design/../`) or outside the project is blocked; the check stays FAIL |
 | `iteration_limit` | after the runner reports the limit, the next edit is blocked and audited |
 | `ip_register_tamper` | a registered block stays UNVERIFIED; editing or overwriting `ip/manifest.yaml` is refused |
-| `engine_run_spice` | real engine + ngspice (skipped without `ROCKET_ENGINE_HOME` or ngspice): agent-set targets refused, `run_spice` admits and `run_job` returns a real FAIL at 55.73 dB, L2 0.5 → 1.0 µm, rerun PASS at 61.18 dB, `python_execute` hidden |
-| `engine_iteration_limit` | real engine, limit 1: one executed `run_job` spends the only attempt, the next edit and run are blocked, `engine_write_doc` is hidden |
+| `engine_run_spice` | real engine + ngspice (skipped without `ROCKET_ENGINE_HOME` or ngspice): agent-set targets refused, `run_spice` returns a real FAIL at 55.73 dB and `run_job` fetches it, L2 0.5 → 1.0 µm, rerun PASS at 61.18 dB, `python_execute` hidden |
+| `engine_iteration_limit` | real engine, limit 1: `run_spice` spends the only attempt, `run_job` still records that run, the next run and edit are blocked, `engine_write_doc` is hidden |
+| `engine_tool_surface` | real engine: reads work; editor verbs, `rewind`, `write_settings` and the engine's `ip_register` are hidden |
 
 To add one, drop a JSON file in `evals/scenarios/` (`{project}` in arguments becomes the project path,
 `{request_id}` the one from the latest acknowledgement).
@@ -201,16 +202,17 @@ AC testbench. Its `constraints.yaml` gives each check both a target and how it i
 - the engine provides `engine_run_spice`, `engine_run_job`, `engine_get_job_status`, `engine_get_logs`,
   `engine_get_check_results`, …; the stub keeps only the workflow tools (constraints, status card, propose/apply
   revision, IP) and withdraws its own runner
-- runs are two-phase, as in the engine's v0.2 contract: `engine_run_spice` admits a job and returns a `request_id`,
-  `engine_run_job` executes it and returns the verdict
+- `engine_run_spice` executes, returns the verdict and records the run; `engine_run_job` fetches that run, or executes a
+  deferred one
 - the engine is bound to the project: it reads targets and measurement formulas from `constraints.yaml` and refuses
   `min`/`max` or a different `expr` from the agent,
   resolves sources inside the project, and writes run files under `results/engine-runs/`
-- `engine_python_execute` is denied (opencode hides it from the model) until approvals for it exist, and so is the
-  engine's document CRUD (`write_doc`, `delete_doc`, `apply_mutations`, `create_project`): design changes go through
-  the edit tools, which have approvals and diffs
-- each executed `engine_run_job` spends one repair iteration: the plugin counts them per session against
-  `agent.iteration_limit` in `constraints.yaml` and blocks further runs and edits at the limit
+- the agent's engine tools are an allowlist of runs and reads, with `engine_generate_views` on ask. `python_execute`,
+  document CRUD, editor verbs, `rewind` and anything the engine adds later stay hidden (opencode hides them from the
+  model): design changes go through the edit tools, which have approvals and diffs
+- each run that executes spends one repair iteration, counted once per `run_id` on any `engine_run_*` call, per session,
+  against `agent.iteration_limit` in `constraints.yaml`; a NOT_RUN or UNSUPPORTED verdict costs nothing. At the limit the
+  plugin blocks new runs and edits; fetching a counted run stays allowed
 - the prompt gains a short engine section (`harness/prompts/runner-engine.md`)
 
 Without ngspice installed, `engine_run_spice` honestly returns NOT_RUN (`missing_dependency`); the `engine_run_spice`

@@ -79,8 +79,8 @@ def check_tools() -> None:
 def check_checkouts(env: dict[str, str]) -> None:
     engine = Path(env.get("ROCKET_ENGINE_HOME") or ROOT / "rocket-engine")
     server = engine / "src" / "adapters" / "mcp" / "server.py"
-    branch_fix = (f"cd {engine} && git fetch && git checkout fuel-mcp-fixes && uv sync   "
-                  "(rocket-engine PR #3; main once it is merged), or set ROCKET_ENGINE_HOME")
+    branch_fix = (f"cd {engine} && git fetch && git checkout GREEN-the-tests && uv sync   "
+                  "(main once it is merged), or set ROCKET_ENGINE_HOME")
     if not engine.is_dir():
         report("FAIL", "rocket-engine", f"not found at {engine}",
                f"git clone https://github.com/Team-RocketEDA/rocket-engine.git {engine}   (or set ROCKET_ENGINE_HOME)")
@@ -88,8 +88,11 @@ def check_checkouts(env: dict[str, str]) -> None:
         report("FAIL", "rocket-engine", f"{engine} is on a branch without the MCP server", branch_fix)
     else:
         text = server.read_text()
-        if "--project-dir" in text and "run_job" in text and "datasets" in text:
-            report("OK", "rocket-engine", f"{engine} (project-bound server, two-phase runs, datasets)")
+        if "--project-dir" in text and "run_job" in text:
+            report("OK", "rocket-engine", f"{engine} (project-bound server)")
+            if "datasets" not in text:
+                report("WARN", "rocket-engine waveforms", "runs keep no waveform datasets, so the IDE's Plots page stays empty",
+                       "port dataset saving from rocket-engine PR #3 onto this branch")
         else:
             report("FAIL", "rocket-engine", f"{engine} lacks the project-bound MCP server", branch_fix)
         if not (engine / ".venv").is_dir():
@@ -102,7 +105,7 @@ def check_checkouts(env: dict[str, str]) -> None:
             report("WARN", "UIUX", "dependencies not installed", f"cd {ui} && npm install")
     elif ui.is_dir():
         report("WARN", "UIUX", "this checkout has no workspace server (sample-data UI)",
-               "check out UIUX PR #3 (real-workspace) or main once it is merged")
+               "check out UIUX main")
     else:
         report("WARN", "UIUX", f"not found at {ui}", "only needed for the IDE; Fuel runs on its own in the terminal")
 
