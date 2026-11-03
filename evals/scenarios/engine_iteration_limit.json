@@ -1,6 +1,6 @@
 {
   "name": "engine_iteration_limit",
-  "description": "Real engine, limit 1: engine_run_spice executes inline, so it spends the only repair attempt. Fetching that same run with run_job stays allowed (it records the evidence and costs nothing); a new run and the next edit are blocked; the engine's document CRUD is hidden.",
+  "description": "Real engine, limit 1: engine_run_spice executes inline, so it spends the only repair attempt. Fetching that same run with run_job stays allowed and costs nothing; a new run and the next edit are blocked; the engine's document CRUD is hidden.",
   "engine": true,
   "requires": [
     "ngspice"

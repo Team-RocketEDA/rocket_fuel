@@ -72,7 +72,7 @@ Things learned by running it (see `evals/`):
 
 Rocket Engine's MCP server (`rocket_engine.adapters.mcp.server`, branch `GREEN-the-tests`) is connectable; Fuel attaches
 it with `ROCKET_ENGINE_HOME` (see README). An operation such as `run_spice` now executes when called and returns the
-verdict. `run_job(request_id)` fetches that run, and the engine writes its evidence only then, or executes a deferred one.
+verdict, and the engine writes its evidence then. `run_job(request_id)` fetches that run, or executes a deferred one.
 What Fuel and the IDE rely on:
 - `--project`/`--project-dir` binding: project_id and expected_revision filled in, sources confined to the project
 - run_spice targets and measurement formulas from `constraints.yaml` (caller min/max/expr refused)
@@ -83,8 +83,7 @@ Missing from `GREEN-the-tests`, only on the conflicted `fuel-mcp-fixes` (PR #3):
 (`<run_id>-ac.raw`) that the IDE plots.
 
 Fuel counts each executed run once per `run_id`, on any `engine_run_*` call, against `agent.iteration_limit`; NOT_RUN and
-UNSUPPORTED verdicts cost nothing. At the limit only a fetch of an already counted run is allowed, so the last run's
-evidence is still written. The agent's engine tools are an allowlist (`scripts/install-into-project.sh`): runs and reads,
+UNSUPPORTED verdicts cost nothing. At the limit only a fetch of an already counted run is allowed. The agent's engine tools are an allowlist (`scripts/install-into-project.sh`): runs and reads,
 with `generate_views` on ask. The engine's editor verbs, document CRUD, `rewind` and `write_settings` stay hidden because
 they would bypass edit approvals, and so does any operation the engine adds later until someone reviews it.
 

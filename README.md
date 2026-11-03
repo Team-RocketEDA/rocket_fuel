@@ -202,8 +202,8 @@ AC testbench. Its `constraints.yaml` gives each check both a target and how it i
 - the engine provides `engine_run_spice`, `engine_run_job`, `engine_get_job_status`, `engine_get_logs`,
   `engine_get_check_results`, …; the stub keeps only the workflow tools (constraints, status card, propose/apply
   revision, IP) and withdraws its own runner
-- `engine_run_spice` executes and returns the verdict; `engine_run_job` then fetches that run, which is when the engine
-  writes its evidence, or executes a deferred one
+- `engine_run_spice` executes, returns the verdict and records the run; `engine_run_job` fetches that run, or executes a
+  deferred one
 - the engine is bound to the project: it reads targets and measurement formulas from `constraints.yaml` and refuses
   `min`/`max` or a different `expr` from the agent,
   resolves sources inside the project, and writes run files under `results/engine-runs/`
@@ -212,7 +212,7 @@ AC testbench. Its `constraints.yaml` gives each check both a target and how it i
   model): design changes go through the edit tools, which have approvals and diffs
 - each run that executes spends one repair iteration, counted once per `run_id` on any `engine_run_*` call, per session,
   against `agent.iteration_limit` in `constraints.yaml`; a NOT_RUN or UNSUPPORTED verdict costs nothing. At the limit the
-  plugin blocks new runs and edits, but fetching a counted run stays allowed so its evidence is written
+  plugin blocks new runs and edits; fetching a counted run stays allowed
 - the prompt gains a short engine section (`harness/prompts/runner-engine.md`)
 
 Without ngspice installed, `engine_run_spice` honestly returns NOT_RUN (`missing_dependency`); the `engine_run_spice`

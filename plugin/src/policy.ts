@@ -15,7 +15,7 @@ export const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply
 export const LIMITED_TOOLS = new Set([...EDIT_TOOLS, "rocket_run_job", "rocket_apply_revision"])
 
 // engine_run_spice and the other engine_run_* operations execute when called and return the verdict.
-// engine_run_job fetches that run (the engine records its evidence then) or executes a deferred one.
+// engine_run_job fetches that run or executes a deferred one.
 export function isEngineRun(tool: string): boolean {
   return tool.startsWith("engine_run_")
 }
