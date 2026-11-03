@@ -1,6 +1,6 @@
 {
   "name": "engine_run_spice",
-  "description": "Real Rocket Engine + real ngspice, two-phase: the agent can't set its own targets, run_spice admits and run_job returns a real FAIL on gain, lengthening the second stage makes the rerun PASS, CRUD writes and python_execute are hidden from the model.",
+  "description": "Real Rocket Engine + real ngspice, the agent can't set its own targets, run_spice returns a real FAIL on gain and run_job fetches it, lengthening the second stage makes the rerun PASS, CRUD writes and python_execute are hidden from the model.",
   "engine": true,
   "requires": [
     "ngspice"
@@ -133,7 +133,7 @@
       },
       {
         "step": 2,
-        "contains": "queued"
+        "contains": "\\\"state\\\": \\\"completed\\\""
       },
       {
         "step": 3,

@@ -33,11 +33,18 @@ config["mcp"]["engine"] = {
                 "--project", project.rstrip("/").split("/")[-1], "--project-dir", project],
     "enabled": True,
 }
-config["permission"]["engine_*"] = "allow"
-config["permission"]["engine_python_execute"] = "deny"  # no approval flow over MCP yet
-# The engine's document CRUD would change design files without the approval and diff the edit tools give.
-for tool in ("write_doc", "delete_doc", "apply_mutations", "create_project"):
-    config["permission"][f"engine_{tool}"] = "deny"
+# An allowlist, so an operation the engine adds later stays hidden until someone reviews it. Everything else
+# (python_execute, document CRUD, editor verbs, rewind, settings) would change the project without the approval
+# and diff the edit tools give. Later rules win, so the deny comes first.
+permission = config["permission"]
+permission["engine_*"] = "deny"
+for pattern in ("engine_run_*", "engine_get_*", "engine_list_*", "engine_cancel_job",
+                "engine_api_help", "engine_api_info", "engine_api_search", "engine_check_capability",
+                "engine_components_of", "engine_connection_graph", "engine_describe_testbench", "engine_entities_with",
+                "engine_erc_check", "engine_instances_on_sheet", "engine_net_occurrences", "engine_plan_checks",
+                "engine_read_doc", "engine_read_entity_revision", "engine_read_settings", "engine_resolve_pin"):
+    permission[pattern] = "allow"
+permission["engine_generate_views"] = "ask"
 json.dump(config, open(path, "w"), indent=2)
 PY
   cat "$FUEL_HOME/harness/prompts/runner-engine.md" >> "$DEST/prompts/rocket-agent.md"

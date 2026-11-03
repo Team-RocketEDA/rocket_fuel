@@ -57,6 +57,7 @@ export type SessionView = {
   iteration?: { used: number; limit?: number; left?: number; limitReached: boolean }
   lastChanges: string[]
   // internal lookups, kept on the view so the reducer stays pure
+  countedRuns: string[]
   roles: Record<string, "user" | "assistant">
   partKinds: Record<string, string>
   revisions: Record<string, { file: string; diff: string; hypothesis: string; applied: boolean }>
@@ -73,6 +74,7 @@ export function emptyView(sessionId?: string): SessionView {
     approvals: [],
     checks: {},
     lastChanges: [],
+    countedRuns: [],
     roles: {},
     partKinds: {},
     revisions: {},
@@ -100,8 +102,8 @@ const LABELS: Record<string, string> = {
   rocket_ip_search: "Search IP library",
   rocket_ip_get: "Read IP block",
   rocket_ip_register: "Register IP block",
-  engine_run_spice: "Prepare simulation",
-  engine_run_job: "Run simulation",
+  engine_run_spice: "Run simulation",
+  engine_run_job: "Record result",
   engine_get_job_status: "Read result",
   engine_get_check_results: "Read check results",
   engine_get_logs: "Search logs",
@@ -154,8 +156,15 @@ function applyToolResult(view: SessionView, tool: string, input: Record<string, 
       iteration: { used: output.iteration, limit: output.iteration_limit, left: output.iterations_left, limitReached: !!output.limit_reached },
     }
   }
-  // Each executed engine run is one repair attempt; the plugin locks the session at the limit.
-  if (tool === "engine_run_job" && output.verdict) {
+  // Each executed engine run is one repair attempt, whichever call reports it; the plugin locks the session at the limit.
+  const runIds = [output.request_id, output.run_id].filter((id) => typeof id === "string")
+  if (
+    tool.startsWith("engine_run_") &&
+    output.verdict &&
+    !["NOT_RUN", "UNSUPPORTED"].includes(output.verdict.status) &&
+    !runIds.some((id) => next.countedRuns.includes(id))
+  ) {
+    next = { ...next, countedRuns: [...next.countedRuns, ...runIds] }
     const used = (next.iteration?.used ?? 0) + 1
     const limit = next.iteration?.limit
     next = { ...next, iteration: { used, limit, left: limit === undefined ? undefined : Math.max(0, limit - used), limitReached: limit !== undefined && used >= limit } }

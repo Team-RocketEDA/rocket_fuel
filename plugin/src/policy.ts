@@ -14,10 +14,33 @@ export const EDIT_TOOLS = new Set(["edit", "write", "multiedit", "patch", "apply
 // Tools that change the design or spend a repair iteration; blocked once a session hits its limit.
 export const LIMITED_TOOLS = new Set([...EDIT_TOOLS, "rocket_run_job", "rocket_apply_revision"])
 
-// Engine runs are two-phase: engine_run_spice (and the other engine_run_* operations) only admit a job,
-// engine_run_job executes it. Only execution spends a repair iteration.
+// engine_run_spice and the other engine_run_* operations execute when called and return the verdict.
+// engine_run_job fetches that run (the engine records its evidence then) or executes a deferred one.
+export function isEngineRun(tool: string): boolean {
+  return tool.startsWith("engine_run_")
+}
+
 export function isLimited(tool: string): boolean {
-  return LIMITED_TOOLS.has(tool) || tool === "engine_run_job"
+  return LIMITED_TOOLS.has(tool) || isEngineRun(tool)
+}
+
+// The ids of a run that really executed, from its tool result; none when the result is only an admission,
+// a refusal, or a verdict saying the check did not run. An unexpected verdict shape still counts as a run.
+export function executedRunIds(toolOutput: string): string[] {
+  if (!/verdict\\*"\s*:/.test(toolOutput)) return []
+  if (/verdict\\*"\s*:\s*\{\s*\\*"status\\*"\s*:\s*\\*"(?:NOT_RUN|UNSUPPORTED)\\*"/.test(toolOutput)) return []
+  const ids: string[] = []
+  for (const key of ["request_id", "run_id"]) {
+    const found = toolOutput.match(new RegExp(`${key}\\\\*"\\s*:\\s*\\\\*"([^"\\\\]+)`))
+    if (found) ids.push(found[1])
+  }
+  return ids
+}
+
+// True when engine_run_job only fetches a run that has already spent its attempt, so no new simulation happens.
+export function fetchesCountedRun(tool: string, args: Record<string, unknown>, counted: Set<string> | undefined): boolean {
+  if (tool !== "engine_run_job" || !counted) return false
+  return [args.request_id, args.run_id].some((id) => typeof id === "string" && counted.has(id))
 }
 
 // Rocket tools that accept the session id the plugin attaches.

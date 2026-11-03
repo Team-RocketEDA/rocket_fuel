@@ -163,6 +163,9 @@ def check(project: Path, expect: dict, results: list[str] | None = None) -> list
     for rel in expect.get("file_absent", []):
         if (project / rel).exists():
             failures.append(f"{rel} exists but should not")
+    for pattern in expect.get("files_exist", []):
+        if not list(project.glob(pattern)):
+            failures.append(f"no file matches {pattern}")
 
     state_file = project / ".rocket" / "stub-state.json"
     state = json.loads(state_file.read_text()) if state_file.exists() else {}
