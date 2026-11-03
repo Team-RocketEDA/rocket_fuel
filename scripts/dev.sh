@@ -16,10 +16,13 @@ if [[ "$(git -C "$PROJECT" rev-parse --show-toplevel 2>/dev/null)" != "$PROJECT"
   exit 1
 fi
 
-# .env first (the model choice is baked in at install time); a ROCKET_MODEL set on the command line wins.
-CLI_MODEL="${ROCKET_MODEL:-}"
-if [[ -f "$FUEL_HOME/.env" ]]; then set -a; source "$FUEL_HOME/.env"; set +a; fi
-[[ -n "$CLI_MODEL" ]] && export ROCKET_MODEL="$CLI_MODEL"
+# .env first (the model choice is baked in at install time); anything already exported wins, so a key
+# passed to a container or a launcher isn't blanked by an empty line in .env.
+if [[ -f "$FUEL_HOME/.env" ]]; then
+  EXPORTED="$(export -p)"
+  set -a; source "$FUEL_HOME/.env"; set +a
+  eval "$EXPORTED"
+fi
 
 "$FUEL_HOME/scripts/install-into-project.sh" "$PROJECT" >/dev/null
 
