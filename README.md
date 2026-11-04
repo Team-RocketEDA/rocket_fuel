@@ -106,6 +106,13 @@ scripts/dev.sh <project> serve --port 4097
 
 Same instructions for both; only the permissions differ.
 
+Two more profiles read and explain rather than build. Neither can edit, and neither can change a verdict:
+
+- `rocket-tutor` (Learn mode, on Muse Spark) teaches from the student's own circuit and can run checks.
+- `rocket-reviewer` (Second opinion, on Muse Wonder with high reasoning) audits the design and its evidence. It can't start runs.
+
+The models accept pictures and PDFs, so a sketch, a lab sheet or a picture of the layout can go in with a prompt. The prompts treat them as data and never as evidence that a check passes.
+
 ## Configuration
 
 | Setting | Where | Default |
@@ -279,7 +286,7 @@ A recording is JSONL: a header line (model, agent, prompt, `"recording": "rocket
 `{"t_ms": ..., "event": {...}}` lines in opencode's own event format. Local paths are rewritten to `/project`.
 The replay stream starts with a `rocket.replay` event; anything displaying it must show a REPLAY banner.
 
-Committed recordings (free GLM model, stub runner, approval profile):
+Committed recordings (an early non-Meta test model, stub runner, approval profile), kept only as UI test fixtures until they're replaced:
 - `opamp-approval-free.jsonl`: reads the constraints, runs the baseline, asks four times before editing the design.
 - `opamp-fix-and-register-free.jsonl`: propose → approve → apply a revision, reach PASS (stub), register the block as UNVERIFIED.
 

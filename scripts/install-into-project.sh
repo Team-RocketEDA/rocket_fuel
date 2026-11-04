@@ -68,7 +68,9 @@ for pattern in ("engine_run_*", "engine_get_*", "engine_list_*", "engine_cancel_
 permission["engine_generate_views"] = "ask"
 json.dump(config, open(path, "w"), indent=2)
 PY
-  cat "$FUEL_HOME/harness/prompts/runner-engine.md" >> "$DEST/prompts/rocket-agent.md"
+  for prompt in rocket-agent rocket-tutor rocket-reviewer; do
+    cat "$FUEL_HOME/harness/prompts/runner-engine.md" >> "$DEST/prompts/$prompt.md"
+  done
 fi
 
 # opencode 1.x auto-loads every file in .opencode/plugin/.

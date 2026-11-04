@@ -12,14 +12,20 @@
       "models": {
         "muse-spark-1.3": {
           "name": "Muse Spark 1.3",
+          "attachment": true,
+          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
           "limit": { "context": 1048576, "output": 32768 }
         },
         "muse-spark-1.3-contributor": {
           "name": "Muse Spark 1.3 Contributor (cheap; Meta may train on prompts, dev/demo data only)",
+          "attachment": true,
+          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
           "limit": { "context": 1048576, "output": 32768 }
         },
         "muse-wonder-1.0": {
-          "name": "Muse Wonder 1.0 (comparison runs only)",
+          "name": "Muse Wonder 1.0 (the second-opinion reviewer)",
+          "attachment": true,
+          "modalities": { "input": ["text", "image", "pdf"], "output": ["text"] },
           "limit": { "context": 1048576, "output": 32768 }
         }
       }
@@ -73,6 +79,7 @@
     "rocket-approval": {
       "description": "RocketEDA chip-design agent. Asks before design edits, IP registration, long jobs and export.",
       "mode": "primary",
+      "model": "meta/muse-spark-1.3",
       "prompt": "{file:./prompts/rocket-agent.md}",
       "temperature": 0.2,
       "steps": 80,
@@ -88,6 +95,7 @@
     "rocket-auto": {
       "description": "RocketEDA chip-design agent. Edits design folders and runs jobs without asking; constraints and export still ask.",
       "mode": "primary",
+      "model": "meta/muse-spark-1.3",
       "prompt": "{file:./prompts/rocket-agent.md}",
       "temperature": 0.2,
       "steps": 80,
@@ -108,6 +116,47 @@
         },
         "rocket_export_project": "ask",
         "rocket_propose_constraint_change": "ask"
+      }
+    },
+    "rocket-tutor": {
+      "description": "Learn mode, on Muse Spark. Teaches the student from their own design and the engine's measurements. Can run checks; never edits.",
+      "mode": "primary",
+      "model": "meta/muse-spark-1.3",
+      "prompt": "{file:./prompts/rocket-tutor.md}",
+      "temperature": 0.3,
+      "steps": 40,
+      "permission": {
+        "edit": { "*": "deny" },
+        "rocket_propose_revision": "deny",
+        "rocket_apply_revision": "deny",
+        "rocket_ip_register": "deny",
+        "rocket_ip_instantiate": "deny",
+        "rocket_generate_views": "deny",
+        "rocket_export_project": "deny",
+        "rocket_propose_constraint_change": "deny",
+        "engine_generate_views": "deny"
+      }
+    },
+    "rocket-reviewer": {
+      "description": "Second opinion, on Muse Wonder. Audits the design and the evidence independently. Reads only: no edits and no new runs.",
+      "mode": "primary",
+      "model": "meta/muse-wonder-1.0",
+      "prompt": "{file:./prompts/rocket-reviewer.md}",
+      "options": { "reasoningEffort": "high" },
+      "temperature": 0.2,
+      "steps": 40,
+      "permission": {
+        "edit": { "*": "deny" },
+        "rocket_propose_revision": "deny",
+        "rocket_apply_revision": "deny",
+        "rocket_ip_register": "deny",
+        "rocket_ip_instantiate": "deny",
+        "rocket_generate_views": "deny",
+        "rocket_export_project": "deny",
+        "rocket_propose_constraint_change": "deny",
+        "engine_generate_views": "deny",
+        "engine_run_*": "deny",
+        "engine_cancel_job": "deny"
       }
     },
     "build": { "disable": true },
