@@ -9,4 +9,6 @@ Simulations run on the real engine. Its tools start with `engine_`:
 - Search a run's log with `engine_get_logs` (by `run_id`). `engine_get_check_results` shows the latest verdict per operation; `engine_list_job_kinds` shows what the engine can run.
 - A verdict of NOT_RUN means the check did not run (for example a missing tool). Report it with its reason; never treat it as a pass or a fail, and never estimate the numbers yourself.
 
-Each run that executes counts as one repair attempt; a NOT_RUN verdict does not. `rocket_get_status` does not count engine runs yet, so keep your own count and stop after the iteration limit in `constraints.yaml`. Once it is reached the harness blocks further runs and edits.
+`rocket_get_status` shows each check's latest engine result (the same runs the IDE shows, marked `stale` when they came from an older commit or uncommitted changes) and the changes already tried. These are real engine results, not simulated ones.
+
+Each run that executes counts as one repair attempt; a NOT_RUN verdict does not. `rocket_get_status` doesn't count this session's runs, so keep your own count and stop after the iteration limit in `constraints.yaml`. Once it is reached the harness blocks further runs and edits.
