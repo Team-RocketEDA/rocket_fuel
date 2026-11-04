@@ -1,0 +1,64 @@
+{
+  "name": "new_project_scaffold",
+  "description": "A new project: the agent can create its README, source, docs and diagram, and still can't touch results or the IP manifest.",
+  "agent": "rocket-auto",
+  "prompt": "Build this as a complete project: a small counter.",
+  "steps": [
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/README.md",
+        "content": "# Counter\n"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/src/counter.v",
+        "content": "module counter; endmodule\n"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/docs/diagrams/top.svg",
+        "content": "<svg xmlns=\"http://www.w3.org/2000/svg\"/>\n"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/results/fake.yaml",
+        "content": "status: PASS\n"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/ip/manifest.yaml",
+        "content": "blocks: []\n"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/notes/elsewhere.md",
+        "content": "x\n"
+      }
+    }
+  ],
+  "expect": {
+    "file_contains": {
+      "README.md": "# Counter",
+      "src/counter.v": "module counter",
+      "docs/diagrams/top.svg": "<svg"
+    },
+    "file_absent": [
+      "results/fake.yaml",
+      "notes/elsewhere.md"
+    ],
+    "file_lacks": {
+      "ip/manifest.yaml": "blocks: []"
+    }
+  }
+}
