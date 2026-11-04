@@ -20,19 +20,32 @@ sed -e "s#{env:ROCKET_FUEL_HOME}#$FUEL_HOME#g" \
 
 # ROCKET_ENGINE_HOME=<rocket-engine checkout> attaches the real engine: its MCP server provides the
 # simulation tools (engine_*), the stub keeps only the workflow tools, and targets come from constraints.yaml.
-if [[ -n "${ROCKET_ENGINE_HOME:-}" ]]; then
-  ENGINE_HOME="$(cd "$ROCKET_ENGINE_HOME" && pwd)"
-  python3 -I - "$DEST/opencode.json" "$ENGINE_HOME" "$PROJECT" <<'PY'
-import json, sys
-path, engine, project = sys.argv[1:4]
+# ROCKET_ENGINE_URL=<running engine> attaches the engine RocketIDE already runs (its scripts/engine-host.py)
+# instead of starting one, so the agent and the IDE share one engine and see each other's runs.
+if [[ -n "${ROCKET_ENGINE_HOME:-}" || -n "${ROCKET_ENGINE_URL:-}" ]]; then
+  ENGINE_HOME="$( [[ -n "${ROCKET_ENGINE_HOME:-}" ]] && cd "$ROCKET_ENGINE_HOME" && pwd || true)"
+  python3 -I - "$DEST/opencode.json" "$ENGINE_HOME" "$PROJECT" "${ROCKET_ENGINE_URL:-}" <<'PY'
+import json, sys, urllib.parse
+path, engine, project, url = sys.argv[1:5]
+name = project.rstrip("/").split("/")[-1]
 config = json.load(open(path))
 config["mcp"]["rocket"].setdefault("environment", {})["ROCKET_STUB_RUNNER"] = "off"
-config["mcp"]["engine"] = {
-    "type": "local",
-    "command": ["uv", "run", "--quiet", "--project", engine, "python", "-m", "rocket_engine.adapters.mcp.server",
-                "--project", project.rstrip("/").split("/")[-1], "--project-dir", project],
-    "enabled": True,
-}
+if url:
+    config["mcp"]["engine"] = {
+        "type": "remote",
+        "url": f"{url.rstrip('/')}/projects/{urllib.parse.quote(name)}/mcp",
+        "enabled": True,
+        "oauth": False,
+        # A run answers when the simulation ends; opencode's default is 5 s.
+        "timeout": 600000,
+    }
+else:
+    config["mcp"]["engine"] = {
+        "type": "local",
+        "command": ["uv", "run", "--quiet", "--project", engine, "python", "-m", "rocket_engine.adapters.mcp.server",
+                    "--project", name, "--project-dir", project],
+        "enabled": True,
+    }
 # An allowlist, so an operation the engine adds later stays hidden until someone reviews it. Everything else
 # (python_execute, document CRUD, editor verbs, rewind, settings) would change the project without the approval
 # and diff the edit tools give. Later rules win, so the deny comes first.

@@ -79,15 +79,18 @@ What Fuel and the IDE rely on:
 - `get_job_status`/`get_check_results`/`get_logs`/`list_job_kinds` wired, measurements kept on PASS, argument schemas
 - evidence per run in `results/engine-runs/<run_id>.json` (verdict, source commit, log); `--call` for the IDE's own Run checks
 
-Missing from `GREEN-the-tests`, only on the conflicted `fuel-mcp-fixes` (PR #3): the waveform datasets
-(`<run_id>-ac.raw`) that the IDE plots.
+The waveform datasets (`<run_id>-ac.raw`) that the IDE plots are kept next to the evidence (rocket-engine#5).
 
 Fuel counts each executed run once per `run_id`, on any `engine_run_*` call, against `agent.iteration_limit`; NOT_RUN and
 UNSUPPORTED verdicts cost nothing. At the limit only a fetch of an already counted run is allowed. The agent's engine tools are an allowlist (`scripts/install-into-project.sh`): runs and reads,
 with `generate_views` on ask. The engine's editor verbs, document CRUD, `rewind` and `write_settings` stay hidden because
 they would bypass edit approvals, and so does any operation the engine adds later until someone reviews it.
 
-Still open on the engine side: one engine shared by the IDE and MCP (each MCP process has its own engine), which store
+One engine shared by the IDE and the agent: RocketIDE's `scripts/engine-host.py` holds one engine per project and serves
+the engine's own MCP handlers over streamable HTTP on loopback; with `ROCKET_ENGINE_URL` set, `install-into-project.sh`
+points the agent's `engine` MCP server at it (`type: remote`). Without it each MCP process still has its own engine.
+
+Still open on the engine side: which store
 is the source of truth for project files (engine CRUD documents or the project's git tree), and the workflow tools
 Fuel's stub still provides (constraints, status card, revisions, IP).
 

@@ -190,6 +190,10 @@ server, synced with `uv sync`), Fuel attaches the engine's MCP server instead:
 ROCKET_ENGINE_HOME=../rocket-engine scripts/dev.sh "$(scripts/new-demo.sh "" opamp-engine)"
 ```
 
+That starts an engine for the agent alone. RocketIDE runs one engine that the IDE and the agent share
+(`scripts/engine-host.py` there); `ROCKET_ENGINE_URL=http://127.0.0.1:<port>` attaches the agent to it over MCP on
+loopback, and the agent and the IDE then see each other's runs.
+
 `examples/opamp-engine/` is a two-stage op-amp on generic level-1 models (no foundry PDK needed) with an open-loop
 AC testbench. Its `constraints.yaml` gives each check both a target and how it is measured (`expr`, plus ngspice
 `control` lines such as `meas ac ugbw_hz when vdb(out)=0`); the engine uses those, not the agent's. With real ngspice:
