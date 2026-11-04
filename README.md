@@ -1,4 +1,10 @@
-# Rocket Fuel
+<p align="center">
+  <img src=".github/assets/rocketide-logo.svg" width="72" height="72" alt="RocketIDE logo">
+</p>
+
+<h1 align="center">Rocket Fuel</h1>
+
+<p align="center"><sub>Part of <a href="https://github.com/Team-RocketEDA/RocketIDE"><b>RocketIDE</b></a> · the agent harness</sub></p>
 
 Rocket Fuel is the agent harness: a pinned build of [opencode](https://opencode.ai) plus the
 configuration, instructions, permission rules and plugin that turn it into a careful design agent.
