@@ -5,8 +5,8 @@ domains: [analog]
 title: Two-stage op-amp
 description: Two-stage Miller op-amp on generic level-1 models, checked with ngspice.
 agent:
-  iteration_limit: 3
-  mode: approval
+  iteration_limit: 10
+  mode: auto
 # What "Run checks" simulates (the agent uses the same netlists).
 simulation:
   operation: run_spice

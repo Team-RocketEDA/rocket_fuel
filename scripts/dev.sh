@@ -31,6 +31,9 @@ STATE="$FUEL_HOME/.opencode-home"
 export XDG_DATA_HOME="$STATE/data" XDG_CONFIG_HOME="$STATE/config" XDG_STATE_HOME="$STATE/state" XDG_CACHE_HOME="$STATE/cache"
 export ROCKET_FUEL_HOME="$FUEL_HOME"
 
+# Only what Fuel installs: not skills and prompts from whatever else is on this machine, which slow every call.
+export OPENCODE_DISABLE_EXTERNAL_SKILLS=1 OPENCODE_DISABLE_CLAUDE_CODE=1
+
 # opencode takes its project directory from PWD.
 cd "$PROJECT"
 export PWD="$PROJECT"

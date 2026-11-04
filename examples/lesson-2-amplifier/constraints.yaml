@@ -4,8 +4,8 @@ description: Pick a load resistor that gives a one-transistor amplifier enough g
 pdk: none
 domains: [analog]
 agent:
-  iteration_limit: 5
-  mode: approval
+  iteration_limit: 10
+  mode: auto
 simulation:
   operation: run_spice
   sources: [design/amplifier.cir, tests/tb_amplifier.cir]

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test"
-import { mkdtempSync, mkdirSync, symlinkSync } from "node:fs"
+import { mkdtempSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { checkEditPath, editTargets, executedRunIds, fetchesCountedRun, hitIterationLimit, iterationLimit } from "../src/policy"
+import { checkEditPath, constraintsLocked, editTargets, executedRunIds, fetchesCountedRun, hitIterationLimit, iterationLimit } from "../src/policy"
 
 function makeProject() {
   const root = mkdtempSync(path.join(tmpdir(), "rocket-proj-"))
@@ -100,5 +100,40 @@ describe("fetchesCountedRun", () => {
     expect(fetchesCountedRun("engine_run_job", {}, counted)).toBe(false)
     expect(fetchesCountedRun("engine_run_spice", { request_id: "req" }, counted)).toBe(false)
     expect(fetchesCountedRun("engine_run_job", { request_id: "req" }, undefined)).toBe(false)
+  })
+})
+
+describe("constraintsLocked", () => {
+  const withConstraints = (text?: string) => {
+    const root = makeProject()
+    if (text !== undefined) writeFileSync(path.join(root, "constraints.yaml"), text)
+    return root
+  }
+
+  test("a new project's targets can be written", () => {
+    expect(constraintsLocked(withConstraints(), "constraints.yaml")).toBe(false)
+    expect(constraintsLocked(withConstraints("title: x\nchecks: []\n"), "constraints.yaml")).toBe(false)
+    expect(constraintsLocked(withConstraints("title: x\n# e.g.\n#  - {id: a}\nchecks: []\n"), "constraints.yaml")).toBe(false)
+  })
+
+  test("targets that exist are locked, in either YAML style and by any path", () => {
+    const root = withConstraints("checks:\n  - id: a\n    value: 60\n")
+    expect(constraintsLocked(root, "constraints.yaml")).toBe(true)
+    expect(constraintsLocked(root, path.join(root, "constraints.yaml"))).toBe(true)
+    expect(constraintsLocked(root, "design/../constraints.yaml")).toBe(true)
+    expect(constraintsLocked(withConstraints("checks: [{id: a, value: 60}]\n"), "constraints.yaml")).toBe(true)
+    expect(constraintsLocked(withConstraints("checks:\n\n  - id: a\n"), "constraints.yaml")).toBe(true)
+  })
+
+  test("a symlink to it is locked too", () => {
+    const root = withConstraints("checks:\n  - id: a\n")
+    symlinkSync(path.join(root, "constraints.yaml"), path.join(root, "design", "alias.yaml"))
+    expect(constraintsLocked(root, "design/alias.yaml")).toBe(true)
+  })
+
+  test("other files aren't affected", () => {
+    const root = withConstraints("checks:\n  - id: a\n")
+    expect(constraintsLocked(root, "design/constraints.yaml")).toBe(false)
+    expect(constraintsLocked(root, "design/opamp.cir")).toBe(false)
   })
 })
