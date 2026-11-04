@@ -120,3 +120,44 @@ def test_same_version_cannot_be_registered_twice(project):
     register()
     assert register()["error"] == "invalid_block"
     assert register(version="0.2.0")["status"] == "UNVERIFIED"
+
+
+def _engine_record(project, run_id, finished, verdict, commit=None):
+    folder = project / "results" / "engine-runs"
+    folder.mkdir(parents=True, exist_ok=True)
+    head = subprocess.run(["git", "-C", project, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    record = {"producer": "rocket-engine", "run_id": run_id, "operation": "run_spice", "verdict": verdict,
+              "finished_at": finished, "source_commit": commit or head, "source_dirty": False}
+    (folder / f"{run_id}.json").write_text(__import__("json").dumps(record))
+
+
+def test_status_with_the_engine_reports_engine_evidence(project, monkeypatch):
+    monkeypatch.setenv("ROCKET_STUB_RUNNER", "off")
+    checks = server.get_constraints()["checks"]
+    first, metric = checks[0]["id"], checks[0]["metric"]
+    _engine_record(project, "old", "2026-11-03T10:00:00Z",
+                   {"status": "FAIL", "measurements": [{"name": metric, "value": 1.0, "status": "fail"}]})
+    _engine_record(project, "new", "2026-11-04T10:00:00Z",
+                   {"status": "PASS", "measurements": [{"name": metric, "value": 61.2, "unit": "dB", "margin": 1.2,
+                                                         "status": "pass"}]})
+    (project / "results" / "engine-runs" / "scratch.json").write_text("{}")
+    status = server.get_status()
+    assert "STUB" not in str(status) and "note" not in status
+    assert status["checks"][first] == {"run_id": "new", "operation": "run_spice", "finished_at": "2026-11-04T10:00:00Z",
+                                       "stale": False, "status": "PASS", "value": 61.2, "unit": "dB", "margin": 1.2}
+    if len(checks) > 1:
+        assert status["checks"][checks[1]["id"]]["status"] == "NOT_RUN_YET"
+
+
+def test_status_with_the_engine_marks_old_commits_stale_and_keeps_not_run(project, monkeypatch):
+    monkeypatch.setenv("ROCKET_STUB_RUNNER", "off")
+    first = server.get_constraints()["checks"][0]["id"]
+    _engine_record(project, "nr", "2026-11-04T10:00:00Z",
+                   {"status": "NOT_RUN", "reason": "missing_dependency: ngspice"}, commit="0" * 40)
+    entry = server.get_status()["checks"][first]
+    assert entry["status"] == "NOT_RUN" and entry["stale"] and entry["reason"].startswith("missing_dependency")
+
+
+def test_status_without_the_engine_still_says_stub(project, monkeypatch):
+    monkeypatch.delenv("ROCKET_STUB_RUNNER", raising=False)
+    assert "STUB" in server.get_status()["note"]

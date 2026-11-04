@@ -12,7 +12,7 @@ from pathlib import Path
 
 from mcp.server.mcpserver import MCPServer
 
-from rocket_stub import ip
+from rocket_stub import evidence, ip
 from rocket_stub.sim import (
     NETLIST,
     RunnerState,
@@ -45,11 +45,25 @@ def get_constraints() -> dict:
     return load_constraints(PROJECT)
 
 
+def engine_attached() -> bool:
+    """Rocket Engine runs the checks (ROCKET_STUB_RUNNER=off): nothing here is simulated."""
+    return os.environ.get("ROCKET_STUB_RUNNER", "on") == "off"
+
+
 @mcp.tool()
 def get_status() -> dict:
     """Compact state card: check statuses, repair iteration count and limit, changes already tried."""
     state = RunnerState.load(PROJECT)
     limit = iteration_limit()
+    if engine_attached():
+        return {
+            "source": "Rocket Engine evidence in results/engine-runs, the same runs the IDE shows",
+            "revision": evidence.revision(PROJECT),
+            "checks": evidence.check_statuses(PROJECT, load_constraints(PROJECT)),
+            "iteration_limit": limit,
+            "repairs": "Each engine run you execute counts as one; the harness blocks runs and edits at the limit.",
+            "changes_tried": state.ledger,
+        }
     return {
         "iteration": state.iteration,
         "iteration_limit": limit,
