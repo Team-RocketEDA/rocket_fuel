@@ -27,6 +27,8 @@
   },
 
   "model": "meta/muse-spark-1.3",
+  "small_model": "meta/muse-spark-1.3",
+  "enabled_providers": ["meta"],
   "default_agent": "rocket-approval",
 
   "mcp": {

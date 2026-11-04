@@ -2,7 +2,7 @@
 # Run the pinned opencode on a chip project with Rocket Fuel installed.
 # Usage: scripts/dev.sh <project-dir> [opencode args...]   e.g. scripts/dev.sh "$(scripts/new-demo.sh)"
 #        scripts/dev.sh <project-dir> serve --port 4097   (headless, what the IDE launcher does)
-# Set ROCKET_MODEL to use another model, e.g. ROCKET_MODEL=opencode/glm-5.3-flash-free (free, no key).
+# ROCKET_MODEL picks the Meta model (default meta/muse-spark-1.3); MODEL_API_KEY is the Meta Model API key.
 set -euo pipefail
 
 FUEL_HOME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

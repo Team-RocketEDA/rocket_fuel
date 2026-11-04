@@ -21,14 +21,7 @@ ROOT = FUEL_HOME.parent
 PINNED_OPENCODE = "1.19.5"
 LOG = FUEL_HOME / ".opencode-home" / "data" / "opencode" / "log" / "opencode.log"
 # Provider keys opencode reads from the environment (names only; values are never printed).
-PROVIDER_KEYS = {
-    "MODEL_API_KEY": "meta (Muse)",
-    "OPENROUTER_API_KEY": "openrouter",
-    "GROQ_API_KEY": "groq",
-    "GOOGLE_GENERATIVE_AI_API_KEY": "google",
-    "ANTHROPIC_API_KEY": "anthropic",
-    "OPENAI_API_KEY": "openai",
-}
+PROVIDER_KEYS = {"MODEL_API_KEY": "meta (Muse)"}
 
 problems = 0
 
@@ -115,9 +108,7 @@ def classify(log_text: str) -> tuple[str, str]:
     errors = re.findall(r'error\.error="([^"]*)', log_text) + re.findall(r'"message":"([^"]{0,200})', log_text)
     joined = " | ".join(errors)
     if re.search(r"free usage|free_tier_limit", joined, re.I):
-        return ("the free opencode quota is used up (it is shared by all opencode/*-free models on this machine)",
-                "wait for the reset, or put a key in rocket_fuel/.env: e.g. OPENROUTER_API_KEY=… with "
-                "ROCKET_MODEL=openrouter/google/gemma-4-31b-it:free (free sign-up), or MODEL_API_KEY for Muse")
+        return ("the provider's usage limit is used up", "wait for the reset, or check your Meta Model API plan")
     if re.search(r"401|403|unauthori[sz]ed|invalid.{0,20}key|api key", joined, re.I):
         return ("the provider rejected the key", "check the key in rocket_fuel/.env for this provider")
     if re.search(r"model.{0,30}not found|ProviderModelNotFound|unknown model|no such model", joined, re.I):
@@ -184,10 +175,13 @@ def main() -> int:
     keys = [f"{name} ({PROVIDER_KEYS[name]})" for name in PROVIDER_KEYS if env.get(name)]
     if not (FUEL_HOME / ".env").is_file():
         report("WARN", ".env", "missing", "cp .env.example .env")
-    report("OK", f"ROCKET_MODEL={model}", "keys set: " + (", ".join(keys) if keys else "none (only opencode/*-free models work)"))
     provider = model.split("/", 1)[0]
-    needs = {"meta": "MODEL_API_KEY", "openrouter": "OPENROUTER_API_KEY", "groq": "GROQ_API_KEY",
-             "google": "GOOGLE_GENERATIVE_AI_API_KEY", "anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY"}.get(provider)
+    if provider != "meta":
+        report("FAIL", f"ROCKET_MODEL={model}", "not a Meta model; only meta/... models run", "set ROCKET_MODEL=meta/muse-spark-1.3")
+        print(f"\n{problems} problem(s) to fix.")
+        return 1
+    report("OK", f"ROCKET_MODEL={model}", "Meta Model API key " + ("set" if keys else "not set"))
+    needs = "MODEL_API_KEY"
     if needs and not env.get(needs):
         report("FAIL", f"key for {provider}", f"{needs} is not set", f"add {needs}=… to rocket_fuel/.env")
     elif args.no_model:
