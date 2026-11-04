@@ -70,11 +70,12 @@ def build_handler(upstream, log_path, color):
     paint = (lambda code, text: f"\033[{code}m{text}\033[0m") if color else (lambda code, text: text)
 
     def emit(line, record):
+        # The file first, so a line on screen is always already in the record of the run.
         with lock:
-            print(line, flush=True)
             if log_path:
                 with open(log_path, "a", encoding="utf-8") as log:
                     log.write(json.dumps(record) + "\n")
+            print(line, flush=True)
 
     class Handler(BaseHTTPRequestHandler):
         protocol_version = "HTTP/1.1"
