@@ -1,0 +1,7 @@
+* An RC low-pass filter. Change the values below, then press Run checks.
+.param R1=10k
+.param C1=100n
+.subckt rc_filter in out gnd
+R1 in out {R1}
+C1 out gnd {C1}
+.ends rc_filter

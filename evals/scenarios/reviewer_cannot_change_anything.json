@@ -1,0 +1,49 @@
+{
+  "name": "reviewer_cannot_change_anything",
+  "description": "Second opinion: the reviewer can't edit, propose a change or start a run.",
+  "agent": "rocket-reviewer",
+  "prompt": "Fix this op-amp for me.",
+  "steps": [
+    {
+      "tool": "edit",
+      "args": {
+        "filePath": "{project}/design/opamp.cir",
+        "oldString": ".param L2=0.5",
+        "newString": ".param L2=2.0"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/design/extra.cir",
+        "content": "* written by the agent\n"
+      }
+    },
+    {
+      "tool": "rocket_propose_revision",
+      "args": {
+        "file": "design/opamp.cir",
+        "old_string": ".param L2=0.5",
+        "new_string": ".param L2=2.0",
+        "hypothesis": "longer L2"
+      }
+    },
+    {
+      "tool": "rocket_run_job",
+      "args": {
+        "kind": "spice_sim"
+      }
+    }
+  ],
+  "expect": {
+    "file_contains": {
+      "design/opamp.cir": ".param L2=0.5"
+    },
+    "file_absent": [
+      "design/extra.cir"
+    ],
+    "checks": {
+      "opamp.dc_gain": null
+    }
+  }
+}

@@ -1,0 +1,42 @@
+schema: rocketeda/constraints/v0.1
+# Generic level-1 models (no foundry PDK needed). Run with the real Rocket Engine and ngspice.
+pdk: none
+domains: [analog]
+title: "Lesson 3: A real op-amp"
+description: Balance gain, speed and stability on a two-stage amplifier, the way analog designers do.
+agent:
+  iteration_limit: 5
+  mode: approval
+# What "Run checks" simulates (the agent uses the same netlists).
+simulation:
+  operation: run_spice
+  sources: [design/opamp.cir, tests/tb_opamp.cir]
+  analyses: ["ac dec 50 1 1e10"]
+# Each check says what to hit and how it is measured; the engine uses these, not the agent's own.
+checks:
+  - id: opamp.dc_gain
+    title: Open-loop DC gain
+    metric: dc_gain_db
+    comparison: ">="
+    value: 60
+    unit: dB
+    required: true
+    expr: vdb(out)[0]
+  - id: opamp.ugbw
+    title: Unity-gain bandwidth
+    metric: ugbw_mhz
+    comparison: ">="
+    value: 10
+    unit: MHz
+    required: true
+    expr: ugbw_hz/1e6
+    control: ["meas ac ugbw_hz when vdb(out)=0"]
+  - id: opamp.phase_margin
+    title: Phase margin
+    metric: phase_margin_deg
+    comparison: ">="
+    value: 60
+    unit: deg
+    required: true
+    expr: 180+ph_at_ugbw
+    control: ["let ph_deg = 180/pi*cph(out)", "meas ac ph_at_ugbw find ph_deg when vdb(out)=0"]

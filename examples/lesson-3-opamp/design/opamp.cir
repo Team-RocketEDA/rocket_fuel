@@ -1,0 +1,19 @@
+* Two-stage Miller op-amp, generic 1.8 V level-1 models (demo only, not a foundry PDK)
+* L2 = second-stage channel length (um); CC = Miller compensation (pF)
+.param L2=0.5
+.param CC=1.0
+.model nch nmos level=1 vto=0.45 kp=250u lambda=0.2
+.model pch pmos level=1 vto=-0.45 kp=100u lambda=0.2
+* channel-length modulation falls as L grows, so a longer second stage has higher gain
+.model nch2 nmos level=1 vto=0.45 kp=250u lambda={0.08/L2}
+.model pch2 pmos level=1 vto=-0.45 kp=100u lambda={0.08/L2}
+.subckt opamp inp inn out vdd vss bias
+M1 n1 inn tail vss nch W=4u L=1u
+M2 n2 inp tail vss nch W=4u L=1u
+M3 n1 n1 vdd vdd pch W=8u L=1u
+M4 n2 n1 vdd vdd pch W=8u L=1u
+M5 tail bias vss vss nch W=4u L=1u
+M6 out n2 vdd vdd pch2 W={40*L2*1e-6} L={L2*1e-6}
+M7 out bias vss vss nch2 W={20*L2*1e-6} L={L2*1e-6}
+CC n2 out {CC*1e-12}
+.ends opamp
