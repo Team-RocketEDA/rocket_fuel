@@ -65,8 +65,11 @@ Choosing a model:
 |---|---|---|---|
 | Muse Spark 1.3 | (default) `meta/muse-spark-1.3` | Meta key | real designs; prompts are not used for training |
 | Muse Spark 1.3 Contributor | `meta/muse-spark-1.3-contributor` | Meta key | development and rehearsals on demo data: ~12–20× cheaper, but Meta may train on prompts and outputs; 150 requests/min |
-| opencode free models | e.g. `opencode/beam-free` | nothing | trying the loop with no key at all (not Muse); one shared quota per machine |
-| any other provider opencode knows | e.g. `openrouter/google/gemma-4-31b-it:free`, `groq/…`, `anthropic/…` | that provider's usual key in `.env` (`OPENROUTER_API_KEY`, …) | a fallback when the free quota runs out |
+
+Only Meta models run. The config enables the Meta Model API provider and nothing else (`enabled_providers`),
+opencode's helper model for titles and summaries is Muse too (`small_model`), and `install-into-project.sh` refuses
+a `ROCKET_MODEL` that isn't `meta/...`. `ROCKET_META_BASE_URL` routes the calls through a relay, such as
+RocketIDE's call log, instead of straight to `https://api.meta.ai/v1`.
 
 Before a demo, check the machine and the model in one go:
 
@@ -264,7 +267,7 @@ without a live agent and as a fallback if the model API is down during a demo.
 
 ```bash
 # record: fresh demo, one prompt, every event until the session is idle (--approve answers approvals "once")
-ROCKET_MODEL=opencode/glm-5.3-flash-free python3 -I evals/record_session.py --approve \
+ROCKET_MODEL=meta/muse-spark-1.3 python3 -I evals/record_session.py --approve \
     --out evals/recordings/opamp-approval-free.jsonl
 
 # replay at real speed (or --speed 5) as an SSE stream on http://127.0.0.1:4199/event;

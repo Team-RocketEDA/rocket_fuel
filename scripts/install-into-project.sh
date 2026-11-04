@@ -11,11 +11,19 @@ DEST="$PROJECT/.opencode"
 mkdir -p "$DEST"
 rm -rf "$DEST/prompts"
 cp -r "$FUEL_HOME/harness/prompts" "$DEST/prompts"
-# ROCKET_MODEL overrides the default model (meta/muse-spark-1.3), e.g. a free opencode model
-# while no Meta key is available: ROCKET_MODEL=opencode/glm-5.3-flash-free
+# Only Meta models run: ROCKET_MODEL picks one of them (default meta/muse-spark-1.3), and the config only
+# enables the Meta Model API provider. ROCKET_META_BASE_URL sends the calls through a relay instead of
+# straight to https://api.meta.ai/v1, e.g. RocketIDE's call log (scripts/meta-relay.py).
 MODEL="${ROCKET_MODEL:-meta/muse-spark-1.3}"
+if [[ "$MODEL" != meta/* ]]; then
+  echo "ROCKET_MODEL=$MODEL is not a Meta model. Use meta/muse-spark-1.3 (or another meta/... model)." >&2
+  exit 2
+fi
+BASE_URL="${ROCKET_META_BASE_URL:-https://api.meta.ai/v1}"
 sed -e "s#{env:ROCKET_FUEL_HOME}#$FUEL_HOME#g" \
     -e "s#\"model\": \"meta/muse-spark-1.3\"#\"model\": \"$MODEL\"#" \
+    -e "s#\"small_model\": \"meta/muse-spark-1.3\"#\"small_model\": \"$MODEL\"#" \
+    -e "s#\"baseURL\": \"https://api.meta.ai/v1\"#\"baseURL\": \"$BASE_URL\"#" \
     "$FUEL_HOME/harness/opencode.json" > "$DEST/opencode.json"
 
 # ROCKET_ENGINE_HOME=<rocket-engine checkout> attaches the real engine: its MCP server provides the
