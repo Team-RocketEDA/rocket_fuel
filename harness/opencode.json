@@ -132,7 +132,7 @@
       }
     },
     "rocket-tutor": {
-      "description": "Learn mode, on Muse Spark. Teaches the student from their own design and the engine's measurements. Can run checks; never edits.",
+      "description": "Learn mode, on Muse Spark. Teaches the user from their own design and the engine's measurements. Can run checks; never edits.",
       "mode": "primary",
       "model": "meta/muse-spark-1.3",
       "prompt": "{file:./prompts/rocket-tutor.md}",
