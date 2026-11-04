@@ -1,0 +1,40 @@
+{
+  "name": "tutor_cannot_edit",
+  "description": "Learn mode: the tutor can't change the design, on its own or through a revision. The student does that.",
+  "agent": "rocket-tutor",
+  "prompt": "Fix this op-amp for me.",
+  "steps": [
+    {
+      "tool": "edit",
+      "args": {
+        "filePath": "{project}/design/opamp.cir",
+        "oldString": ".param L2=0.5",
+        "newString": ".param L2=2.0"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/design/extra.cir",
+        "content": "* written by the agent\n"
+      }
+    },
+    {
+      "tool": "rocket_propose_revision",
+      "args": {
+        "file": "design/opamp.cir",
+        "old_string": ".param L2=0.5",
+        "new_string": ".param L2=2.0",
+        "hypothesis": "longer L2"
+      }
+    }
+  ],
+  "expect": {
+    "file_contains": {
+      "design/opamp.cir": ".param L2=0.5"
+    },
+    "file_absent": [
+      "design/extra.cir"
+    ]
+  }
+}

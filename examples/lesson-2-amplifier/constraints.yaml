@@ -1,0 +1,30 @@
+schema: rocketeda/constraints/v0.1
+title: "Lesson 2: Your first amplifier"
+description: Pick a load resistor that gives a one-transistor amplifier enough gain without losing its speed.
+pdk: none
+domains: [analog]
+agent:
+  iteration_limit: 5
+  mode: approval
+simulation:
+  operation: run_spice
+  sources: [design/amplifier.cir, tests/tb_amplifier.cir]
+  analyses: ["ac dec 50 1 1e10"]
+checks:
+  - id: amp.gain
+    title: Voltage gain
+    metric: gain_db
+    comparison: ">="
+    value: 20
+    unit: dB
+    required: true
+    expr: vdb(out)[0]
+  - id: amp.bandwidth
+    title: Bandwidth
+    metric: bandwidth_mhz
+    comparison: ">="
+    value: 3
+    unit: MHz
+    required: true
+    expr: bw_hz/1e6
+    control: ["let bw_target = vdb(out)[0]-3", "meas ac bw_hz when vdb(out)=bw_target"]

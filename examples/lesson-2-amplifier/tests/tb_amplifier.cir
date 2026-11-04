@@ -1,0 +1,5 @@
+* A 1.8 V supply, 0.6 V of bias with a small signal on top, and 1 pF of load.
+VDD vdd 0 1.8
+VG in 0 0.6 AC 1
+X1 in out vdd 0 amplifier
+CL out 0 1p

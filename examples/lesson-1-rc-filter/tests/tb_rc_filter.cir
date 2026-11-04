@@ -1,0 +1,3 @@
+* Sends 1 V at every frequency into the filter. The engine measures what comes out.
+VIN in 0 AC 1
+X1 in out 0 rc_filter

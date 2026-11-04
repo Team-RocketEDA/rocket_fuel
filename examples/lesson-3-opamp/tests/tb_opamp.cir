@@ -1,0 +1,8 @@
+* Open-loop AC testbench for design/opamp.cir. The 1 GOhm / 1 F loop fixes the DC point and is open at AC.
+VDD vdd 0 1.8
+VBIAS bias 0 0.75
+VCM inp 0 0.9 AC 1
+RF out inn 1G
+CF inn 0 1
+CL out 0 2p
+XOA inp inn out vdd 0 bias opamp

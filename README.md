@@ -111,6 +111,8 @@ Two more profiles read and explain rather than build. Neither can edit, and neit
 - `rocket-tutor` (Learn mode, on Muse Spark) teaches from the student's own circuit and can run checks.
 - `rocket-reviewer` (Second opinion, on Muse Wonder with high reasoning) audits the design and its evidence. It can't start runs.
 
+`examples/lesson-*` are guided projects for beginners. Each has a `LESSON.md`, targets the engine grades and a design that starts out failing. The tutor reads the lesson and teaches toward its goal.
+
 The models accept pictures and PDFs, so a sketch, a lab sheet or a picture of the layout can go in with a prompt. The prompts treat them as data and never as evidence that a check passes.
 
 ## Configuration

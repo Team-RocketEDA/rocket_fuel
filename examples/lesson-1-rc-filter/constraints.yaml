@@ -1,0 +1,39 @@
+schema: rocketeda/constraints/v0.1
+title: "Lesson 1: Your first filter"
+description: Choose a resistor and a capacitor so an RC filter cuts off at the right frequency.
+pdk: none
+domains: [analog]
+agent:
+  iteration_limit: 5
+  mode: approval
+simulation:
+  operation: run_spice
+  sources: [design/rc_filter.cir, tests/tb_rc_filter.cir]
+  analyses: ["ac dec 50 1 1e7"]
+checks:
+  - id: filter.passband
+    title: Low frequencies pass through
+    metric: passband_db
+    comparison: ">="
+    value: -0.1
+    unit: dB
+    required: true
+    expr: vdb(out)[0]
+  - id: filter.corner_low
+    title: Corner frequency, lower limit
+    metric: corner_low_khz
+    comparison: ">="
+    value: 1.5
+    unit: kHz
+    required: true
+    expr: corner_lo_hz/1e3
+    control: ["meas ac corner_lo_hz when vdb(out)=-3.0103"]
+  - id: filter.corner_high
+    title: Corner frequency, upper limit
+    metric: corner_high_khz
+    comparison: "<="
+    value: 1.7
+    unit: kHz
+    required: true
+    expr: corner_hi_hz/1e3
+    control: ["meas ac corner_hi_hz when vdb(out)=-3.0103"]

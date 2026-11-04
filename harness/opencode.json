@@ -155,6 +155,7 @@
         "rocket_export_project": "deny",
         "rocket_propose_constraint_change": "deny",
         "engine_generate_views": "deny",
+        "rocket_run_job": "deny",
         "engine_run_*": "deny",
         "engine_cancel_job": "deny"
       }
