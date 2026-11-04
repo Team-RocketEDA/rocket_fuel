@@ -1,6 +1,6 @@
 {
   "name": "tutor_cannot_edit",
-  "description": "Learn mode: the tutor can't change the design, on its own or through a revision. The student does that.",
+  "description": "Learn mode: the tutor can't change the design, on its own or through a revision. The user does that.",
   "agent": "rocket-tutor",
   "prompt": "Fix this op-amp for me.",
   "steps": [

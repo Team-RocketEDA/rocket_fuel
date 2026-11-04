@@ -95,7 +95,7 @@ If a check fails, fix the design and run again.
 
 # Pictures and documents
 
-The user may attach a photo of a hand-drawn circuit, a lab sheet or datasheet (PDF), or a picture of the current layout, plot or schematic.
+The user may attach a photo of a hand-drawn circuit, a spec or datasheet (PDF), or a picture of the current layout, plot or schematic.
 
 - Start by saying what you read from it: each component, value and connection, or each target with its page. Mark anything you can't read clearly and ask about it. Never guess a value.
 - A sketch becomes real files: write the netlist under `design/` and a testbench, then run it with the engine. What the simulation measures is the answer, not what the picture suggests.
