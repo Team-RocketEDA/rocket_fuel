@@ -1,5 +1,5 @@
 // Pure decision logic for the RocketEDA plugin, kept free of opencode types so it can be unit-tested.
-import { realpathSync } from "node:fs"
+import { readFileSync, realpathSync } from "node:fs"
 import path from "node:path"
 
 // Folders only the runner / project service may write. Mirrors the deny rules in harness/opencode.json;
@@ -88,6 +88,21 @@ export function checkEditPath(projectDir: string, filePath: string, pdkRoots: st
     return { allow: false, reason: `${relPosix} is changed only through the rocket tools: ${filePath}` }
   }
   return { allow: true }
+}
+
+// Once a project has targets, the agent can't change them itself: it could otherwise pass by lowering the bar. A new
+// project's first targets are written freely. Changing them goes through rocket_propose_constraint_change, which asks.
+export function constraintsLocked(projectDir: string, filePath: string): boolean {
+  const root = resolveReal(path.resolve(projectDir))
+  const file = path.join(root, "constraints.yaml")
+  // Resolved, so a symlink or "../" can't reach it under another name.
+  if (resolveReal(path.resolve(projectDir, filePath)) !== file) return false
+  try {
+    const text = readFileSync(file, "utf8").replace(/#[^\n]*/g, "")
+    return /^checks:[ \t]*(\n[ \t]*\n?)*[ \t]*-/m.test(text) || /^checks:[ \t]*\[[ \t\n]*[^\]\s]/m.test(text)
+  } catch {
+    return false
+  }
 }
 
 // Collect every path an edit-type tool call would touch.

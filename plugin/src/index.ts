@@ -5,6 +5,7 @@ import { appendFileSync, mkdirSync, readFileSync } from "node:fs"
 import path from "node:path"
 import {
   checkEditPath,
+  constraintsLocked,
   EDIT_TOOLS,
   editTargets,
   executedRunIds,
@@ -55,6 +56,11 @@ export const RocketPlugin: Plugin = async ({ directory }) => {
           if (!verdict.allow) {
             audit({ sessionID, tool, target, blocked: verdict.reason })
             throw new Error(`Blocked by RocketEDA: ${verdict.reason}`)
+          }
+          if (constraintsLocked(directory, target)) {
+            const reason = "constraints.yaml already has targets, which the agent can't change. Use rocket_propose_constraint_change, and the user decides."
+            audit({ sessionID, tool, target, blocked: reason })
+            throw new Error(`Blocked by RocketEDA: ${reason}`)
           }
         }
       }

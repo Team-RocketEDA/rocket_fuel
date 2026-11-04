@@ -66,6 +66,9 @@ for pattern in ("engine_run_*", "engine_get_*", "engine_list_*", "engine_cancel_
                 "engine_read_doc", "engine_read_entity_revision", "engine_read_settings", "engine_resolve_pin"):
     permission[pattern] = "allow"
 permission["engine_generate_views"] = "ask"
+# Reading the engine's manuals one call at a time is where a session's minutes went. The prompt says what's needed.
+for pattern in ("engine_api_help", "engine_api_info", "engine_api_search", "engine_read_doc", "engine_list_docs"):
+    permission[pattern] = "deny"
 json.dump(config, open(path, "w"), indent=2)
 PY
   for prompt in rocket-agent rocket-tutor rocket-reviewer; do

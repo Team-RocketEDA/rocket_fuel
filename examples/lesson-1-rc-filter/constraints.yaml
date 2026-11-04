@@ -4,8 +4,8 @@ description: Choose a resistor and a capacitor so an RC filter cuts off at the r
 pdk: none
 domains: [analog]
 agent:
-  iteration_limit: 5
-  mode: approval
+  iteration_limit: 10
+  mode: auto
 simulation:
   operation: run_spice
   sources: [design/rc_filter.cir, tests/tb_rc_filter.cir]

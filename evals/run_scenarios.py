@@ -94,7 +94,7 @@ def prepare_project(scenario: dict, port: int) -> Path:
 
     if "iteration_limit" in scenario:
         constraints = project / "constraints.yaml"
-        text = constraints.read_text().replace("iteration_limit: 3", f"iteration_limit: {scenario['iteration_limit']}")
+        text = re.sub(r"iteration_limit: \d+", f"iteration_limit: {scenario['iteration_limit']}", constraints.read_text())
         constraints.write_text(text)
 
     # Projects are git repos (the project service owns git). Without one, opencode matches edit

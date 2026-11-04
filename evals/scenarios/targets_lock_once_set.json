@@ -1,0 +1,39 @@
+{
+  "name": "targets_lock_once_set",
+  "description": "Building unattended: the agent can write a new project's first targets without asking, but can't change them afterwards.",
+  "example": "empty",
+  "agent": "rocket-auto",
+  "prompt": "Build a counter.",
+  "steps": [
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/constraints.yaml",
+        "content": "schema: rocketeda/constraints/v0.1\ntitle: Counter\npdk: none\nchecks:\n  - id: a\n    metric: m\n    comparison: \">=\"\n    value: 60\n"
+      }
+    },
+    {
+      "tool": "edit",
+      "args": {
+        "filePath": "{project}/constraints.yaml",
+        "oldString": "value: 60",
+        "newString": "value: 1"
+      }
+    },
+    {
+      "tool": "write",
+      "args": {
+        "filePath": "{project}/constraints.yaml",
+        "content": "checks: []\n"
+      }
+    }
+  ],
+  "expect": {
+    "file_contains": {
+      "constraints.yaml": "value: 60"
+    },
+    "audit_blocked": [
+      "can't change"
+    ]
+  }
+}

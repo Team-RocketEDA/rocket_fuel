@@ -5,8 +5,8 @@ domains: [analog]
 title: "Lesson 3: A real op-amp"
 description: Balance gain, speed and stability on a two-stage amplifier, the way analog designers do.
 agent:
-  iteration_limit: 5
-  mode: approval
+  iteration_limit: 10
+  mode: auto
 # What "Run checks" simulates (the agent uses the same netlists).
 simulation:
   operation: run_spice
