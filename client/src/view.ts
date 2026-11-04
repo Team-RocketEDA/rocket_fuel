@@ -4,7 +4,15 @@
 export type CheckStatus = "PASS" | "FAIL" | "NOT_RUN" | "UNSUPPORTED"
 export type StepStatus = "pending" | "running" | "completed" | "error"
 
-export type ChatMessage = { id: string; role: "user" | "agent"; text: string; time: number }
+export type ChatMessage = {
+  id: string
+  role: "user" | "agent"
+  text: string
+  time: number
+  attachment?: { name: string; mime: string; url: string }
+  // The model that wrote it, when the session has more than one (Second opinion is on Muse Wonder).
+  model?: string
+}
 
 export type ToolStep = {
   id: string
@@ -59,6 +67,7 @@ export type SessionView = {
   // internal lookups, kept on the view so the reducer stays pure
   countedRuns: string[]
   roles: Record<string, "user" | "assistant">
+  models: Record<string, string>
   partKinds: Record<string, string>
   revisions: Record<string, { file: string; diff: string; hypothesis: string; applied: boolean }>
 }
@@ -76,6 +85,7 @@ export function emptyView(sessionId?: string): SessionView {
     lastChanges: [],
     countedRuns: [],
     roles: {},
+    models: {},
     partKinds: {},
     revisions: {},
   }
@@ -191,7 +201,13 @@ function applyPart(view: SessionView, part: any, time: number): SessionView {
   if (part.type === "text" && !part.synthetic) {
     const role = view.roles[part.messageID] === "user" ? "user" : "agent"
     const existing = view.messages.find((m) => m.id === part.id)
-    return { ...next, messages: upsert(next.messages, { id: part.id, role, text: part.text ?? "", time: existing?.time ?? time }) }
+    return { ...next, messages: upsert(next.messages, { id: part.id, role, text: part.text ?? "", time: existing?.time ?? time, model: view.models[part.messageID] }) }
+  }
+
+  if (part.type === "file" && view.roles[part.messageID] === "user") {
+    const existing = view.messages.find((m) => m.id === part.id)
+    const attachment = { name: part.filename ?? "attachment", mime: part.mime ?? "", url: part.url ?? "" }
+    return { ...next, messages: upsert(next.messages, { id: part.id, role: "user", text: "", time: existing?.time ?? time, attachment }) }
   }
 
   if (part.type === "tool") {
@@ -296,7 +312,8 @@ export function reduce(view: SessionView, event: OpencodeEvent, time = Date.now(
       if (!props.info?.id) return view
       // Assistant messages carry the model that wrote them, which also covers restored history.
       const model = props.info.providerID && props.info.modelID ? `${props.info.providerID}/${props.info.modelID}` : view.model
-      return { ...view, model, agent: props.info.agent ?? view.agent, roles: { ...view.roles, [props.info.id]: props.info.role } }
+      const models = props.info.modelID ? { ...view.models, [props.info.id]: props.info.modelID } : view.models
+      return { ...view, model, models, agent: props.info.agent ?? view.agent, roles: { ...view.roles, [props.info.id]: props.info.role } }
     }
     case "message.part.updated":
       // Prefer the part's own timestamp, so restored history keeps messages and tool calls in order.

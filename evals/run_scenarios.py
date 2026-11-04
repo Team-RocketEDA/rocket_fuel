@@ -116,8 +116,9 @@ def prepare_project(scenario: dict, port: int) -> Path:
     config["small_model"] = "fake/scripted"
     # The scripted stand-in is the only provider an eval may call.
     config["enabled_providers"] = ["fake"]
-    for agent in ("rocket-approval", "rocket-auto"):
-        config["agent"][agent]["model"] = "fake/scripted"
+    for agent in config["agent"].values():
+        if not agent.get("disable"):
+            agent["model"] = "fake/scripted"
     config_path.write_text(json.dumps(config, indent=2))
     return project
 

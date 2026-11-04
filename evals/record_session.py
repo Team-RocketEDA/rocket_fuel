@@ -13,6 +13,7 @@ Set ROCKET_MODEL / MODEL_API_KEY as for scripts/dev.sh.
 import argparse
 import base64
 import json
+import mimetypes
 import os
 import secrets
 import socket
@@ -62,6 +63,14 @@ def wait_ready(server: Server, proc: subprocess.Popen, timeout: float = 90) -> N
     raise TimeoutError("opencode server did not start")
 
 
+def attachment_parts(path: str | None) -> list[dict]:
+    if not path:
+        return []
+    mime = mimetypes.guess_type(path)[0] or "application/octet-stream"
+    data = base64.b64encode(Path(path).read_bytes()).decode()
+    return [{"type": "file", "mime": mime, "filename": Path(path).name, "url": f"data:{mime};base64,{data}"}]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
@@ -69,6 +78,7 @@ def main() -> int:
     parser.add_argument("--agent", default="rocket-approval")
     parser.add_argument("--project")
     parser.add_argument("--approve", action="store_true", help='answer every approval request "once"')
+    parser.add_argument("--attach", help="a picture or PDF to send with the prompt")
     parser.add_argument("--timeout", type=float, default=600)
     args = parser.parse_args()
 
@@ -109,7 +119,7 @@ def main() -> int:
         session = server.json("POST", "/session", {"title": "recorded session"})
         session_id.append(session["id"])
         server.json("POST", f"/session/{session['id']}/prompt_async",
-                    {"agent": args.agent, "parts": [{"type": "text", "text": args.prompt}]})
+                    {"agent": args.agent, "parts": [{"type": "text", "text": args.prompt}, *attachment_parts(args.attach)]})
         finished = idle.wait(args.timeout)
     finally:
         os.killpg(proc.pid, 15)

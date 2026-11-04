@@ -43,6 +43,9 @@ class Usage:
     def take(self, payload):
         if not isinstance(payload, dict):
             return
+        # The Responses API (SAM 3.1) nests these in its response.completed event.
+        if isinstance(payload.get("response"), dict):
+            payload = payload["response"]
         self.model = payload.get("model") or self.model
         usage = payload.get("usage") or {}
         if isinstance(usage, dict):

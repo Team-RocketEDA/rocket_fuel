@@ -3,6 +3,9 @@
 
 import type { OpencodeEvent } from "./view"
 
+// A picture or PDF sent with a prompt, as a data: URL.
+export type Attachment = { name: string; mime: string; url: string }
+
 export type Reply = "once" | "always" | "reject"
 
 export type ClientOptions = {
@@ -38,8 +41,12 @@ export class FuelClient {
   }
 
   // Returns once the prompt is accepted; the agent's work arrives on the event stream.
-  async prompt(sessionId: string, text: string, agent = "rocket-approval"): Promise<void> {
-    await this.request("POST", `/session/${sessionId}/prompt_async`, { agent, parts: [{ type: "text", text }] })
+  async prompt(sessionId: string, text: string, agent = "rocket-approval", files: Attachment[] = []): Promise<void> {
+    const parts = [
+      { type: "text", text },
+      ...files.map((file) => ({ type: "file", mime: file.mime, filename: file.name, url: file.url })),
+    ]
+    await this.request("POST", `/session/${sessionId}/prompt_async`, { agent, parts })
   }
 
   async reply(permissionId: string, reply: Reply, message?: string): Promise<void> {

@@ -91,6 +91,13 @@ class RelayTest(unittest.TestCase):
         self.assertIn("<- 200  model=muse-spark-1.3  tokens in 42 / out 7", out)
         self.assertIn("id=req_standin", out)
 
+    def test_a_responses_api_stream_reports_its_model_and_tokens(self):
+        usage = relay.Usage()
+        usage.feed_stream('data: {"type": "response.output_text.delta", "delta": "x"}\n\n')
+        usage.feed_stream('data: {"type": "response.completed", "response": {"model": "sam-3.1", '
+                          '"usage": {"input_tokens": 9, "output_tokens": 2}}}\n\n')
+        self.assertEqual((usage.model, usage.tokens_in, usage.tokens_out), ("sam-3.1", 9, 2))
+
     def test_json_call_and_the_log_never_hold_the_key_or_the_prompt(self):
         status, text = self.call(stream=False)
         self.assertEqual((status, json.loads(text)["choices"][0]["message"]["content"]), (200, "pong"))
