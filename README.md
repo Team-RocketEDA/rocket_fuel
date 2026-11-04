@@ -17,7 +17,7 @@ and when it must stop**.
 
 - **No fake results.** The agent cannot write check results or runner state, and has no tool that sets a status.
   It can only ask the runner to run a job and read what comes back.
-- **Edits stay inside the design folders.** `design/`, `tests/`, `workflows/` and `ip/` are editable;
+- **Edits stay inside the project's working folders.** `design/`, `src/`, `rtl/`, `tests/`, `docs/`, `scripts/`, `workflows/`, `ip/` and `README.md` are editable;
   `results/`, `exports/`, `.rocket/`, `.opencode/`, `.git/`, `ip/manifest.yaml`, PDK installs and anything outside the project are not,
   including through symlinks or `../` tricks.
 - **A hard stop.** When the runner reports the repair-iteration limit, the session is locked: no more edits or runs,
@@ -93,15 +93,16 @@ scripts/dev.sh <project> serve --port 4097
 
 ## Agent profiles
 
-| Action | `rocket-approval` (default) | `rocket-auto` |
+| Action | `rocket-auto` (the app's default) | `rocket-approval` |
 |---|---|---|
 | Read and search the project | allow | allow |
-| Edit `design/`, `tests/`, `workflows/`, `ip/` | ask | allow |
-| Edit `constraints.yaml` | ask | ask |
+| Edit `design/`, `src/`, `rtl/`, `tests/`, `docs/`, `scripts/`, `workflows/`, `ip/`, `README.md` | allow | ask |
+| Write the first targets in `constraints.yaml` | allow | ask |
+| Change targets once they're set | blocked: propose it, and the user decides | blocked: propose it, and the user decides |
 | Edit `results/`, `exports/`, `.rocket/`, `.opencode/`, `.git/` | deny | deny |
 | Shell, web, subagents, outside the project | deny | deny |
 | Run jobs, read results | allow | allow |
-| Apply revision, register/instantiate IP, generate views | ask | allow |
+| Apply revision, register/instantiate IP, generate views | allow | ask |
 | Export, propose a constraint change | ask | ask |
 
 Same instructions for both; only the permissions differ.
