@@ -24,7 +24,9 @@ and when it must stop**.
   and the agent has to summarise and hand back to the user.
 - **No shell, no web.** Shell commands, web fetch/search and subagents are denied.
 - **An audit trail.** Every tool call and every block is appended to `.rocket/audit.jsonl` in the project.
-- **Keys stay out of files.** The model key comes from the `MODEL_API_KEY` environment variable only.
+- **Keys stay out of project files.** The model key is read from the environment, from the private
+  `~/.config/rocketide/credentials` file, or from the provider's usual variable; it is never written into a project,
+  a log or `opencode.json`.
 
 ## How it fits together
 
@@ -38,8 +40,8 @@ and when it must stop**.
    └──────────┬───────────────────────┬───────────┘
               │ model API             │ MCP (stdio)
               ▼                       ▼
-     Muse Spark 1.3 (default)   `rocket` tool server
-     or any configured model    (mcp-stub/ for now)
+     any OpenCode model          `rocket` tool server
+     (Meta Muse Spark default)   (mcp-stub/ for now)
 ```
 
 Fuel's config is installed into each project's `.opencode/` folder, and opencode is started with that project
@@ -65,11 +67,16 @@ Choosing a model:
 |---|---|---|---|
 | Muse Spark 1.3 | (default) `meta/muse-spark-1.3` | Meta key | real designs; prompts are not used for training |
 | Muse Spark 1.3 Contributor | `meta/muse-spark-1.3-contributor` | Meta key | development and rehearsals on demo data: ~12–20× cheaper, but Meta may train on prompts and outputs; 150 requests/min |
+| Native OpenCode provider | `openai/gpt-5.1`, `anthropic/claude-sonnet-4-5`, `google/gemini-2.5-pro`, `ollama/llama3.3`, ... | that provider's key, if any | any supported provider |
+| Custom endpoint | `your-id/your-model` + `ROCKET_PROVIDER_TYPE=openai-compatible` + `ROCKET_BASE_URL` | its key | vLLM, LM Studio, a gateway, a self-hosted server |
 
-Only Meta models run. The config enables the Meta Model API provider and nothing else (`enabled_providers`),
-opencode's helper model for titles and summaries is Muse too (`small_model`), and `install-into-project.sh` refuses
-a `ROCKET_MODEL` that isn't `meta/...`. `ROCKET_META_BASE_URL` routes the calls through a relay, such as
-RocketIDE's call log, instead of straight to `https://api.meta.ai/v1`.
+`install-into-project.sh` accepts any `provider/model` the pinned opencode understands. It calls
+`scripts/model_config.py`, the one resolver for `ROCKET_MODEL`, the role overrides
+(`ROCKET_SMALL_MODEL`, `ROCKET_TUTOR_MODEL`, `ROCKET_REVIEWER_MODEL`) and the saved configuration at
+`~/.config/rocketide/model.json`, then writes that project's `.opencode/opencode.json` in the 1.19.5 schema
+(singular `provider`, `enabled_providers`, `model`, `small_model`). A saved configuration wins over `.env`; an
+exported value wins over both. `ROCKET_META_BASE_URL` is still accepted as an alias for an OpenAI-compatible
+base URL. See [../docs/providers.md](../docs/providers.md) for native and custom setup.
 
 Before a demo, check the machine and the model in one go:
 
@@ -109,8 +116,12 @@ Same instructions for both; only the permissions differ.
 
 Two more profiles read and explain rather than build. Neither can edit, and neither can change a verdict:
 
-- `rocket-tutor` (Learn mode, on Muse Spark) teaches from the user's own circuit and can run checks.
-- `rocket-reviewer` (Second opinion, on Muse Wonder with high reasoning) audits the design and its evidence. It can't start runs.
+- `rocket-tutor` (Learn mode) teaches from the user's own circuit and can run checks. Its model is
+  `ROCKET_TUTOR_MODEL`, otherwise the main model.
+- `rocket-reviewer` (Second opinion) audits the design and its evidence. It can't start runs. Its model is
+  `ROCKET_REVIEWER_MODEL`, otherwise Muse Wonder 1.0 while the main model is Meta, or the main model.
+
+Provider-specific reasoning options are not forced on another provider's model.
 
 `examples/lesson-*` are guided projects for beginners. Each has a `LESSON.md`, targets the engine grades and a design that starts out failing. The tutor reads the lesson and teaches toward its goal.
 
@@ -120,12 +131,14 @@ The models accept pictures and PDFs, so a sketch, a spec or a picture of the lay
 
 | Setting | Where | Default |
 |---|---|---|
-| Model | `ROCKET_MODEL` env, or `model` in `harness/opencode.json` | `meta/muse-spark-1.3` |
-| Model API key | `MODEL_API_KEY` env | none |
+| Model | `ROCKET_MODEL`, or the saved `~/.config/rocketide/model.json` | `meta/muse-spark-1.3` |
+| Role models | `ROCKET_SMALL_MODEL`, `ROCKET_TUTOR_MODEL`, `ROCKET_REVIEWER_MODEL` | inherit the main model (reviewer: Muse Wonder on Meta) |
+| Model API key | `~/.config/rocketide/credentials`, `MODEL_API_KEY`, or the provider's variable | none |
+| Custom endpoint | `ROCKET_PROVIDER_TYPE=openai-compatible` and `ROCKET_BASE_URL` | native provider |
 | Read-only PDK locations | `ROCKET_PDK_ROOTS` env (`:`-separated) | none |
 | Repair-iteration limit | `agent.iteration_limit` in the project's `constraints.yaml` (read by the runner) | 3 |
 | Agent instructions | `harness/prompts/rocket-agent.md` | |
-| Providers | `provider` in `harness/opencode.json` (any OpenAI-compatible or local model) | Meta Model API |
+| Providers | generated per project by `scripts/model_config.py` into `.opencode/opencode.json` | Meta Model API |
 
 Requirements for a project:
 - It must be the root of its own git repo; opencode matches permission paths like `design/**` from the git root.

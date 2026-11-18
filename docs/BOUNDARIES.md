@@ -10,13 +10,13 @@ Who owns what, and what each repo needs from the others. Based on the PRD repo's
 | opencode (pinned build), its config, agent profiles, permissions | **Fuel** | `harness/opencode.json` |
 | System prompt / agent instructions | **Fuel** | `harness/prompts/rocket-agent.md` (PRD harness §11) |
 | opencode plugin: protected paths, iteration lock, session ids, audit log | **Fuel** | `plugin/` |
-| Meta Model API provider setup (Muse Spark 1.3) and BYOK provider list | **Fuel** | config only; keys never in files |
+| Provider/model configuration (Meta default; native OpenCode providers and custom OpenAI-compatible endpoints) | **Fuel** | `scripts/model_config.py`; keys never in project files |
 | Evals / recorded sessions / replay fixtures | **Fuel** | `evals/` |
 | Stub of the Engine's MCP tools, for development only | **Fuel** | `mcp-stub/`, deleted once Engine's bridge works |
 | Project tooling engine, runner, evaluator, evidence, IP registry, PDK catalog | **Engine** | Python (blueprint B1–B8) |
 | **MCP bridge** (`rocket` server with the tools below) | **Engine** | Blueprint B9 puts it in the tooling repo: it's a thin binding to engine ops |
 | Iteration counter (source of truth) | **Engine** | Runner counts; Fuel's plugin only locks the session when told |
-| Electron main: spawns opencode + engine, keychain, passes `MODEL_API_KEY` | **IDE** | Fuel provides the exact launch command and env (below) |
+| Electron main: spawns opencode + engine, stores keys per provider, injects the selected provider's key | **IDE** | Fuel provides the exact launch command and env (below) |
 | Chat UI (assistant-ui), approvals dialog, iteration banner, check table | **IDE** | Talks to opencode's HTTP API + event stream |
 
 ## Contract 1: MCP tool surface (Engine provides, Fuel consumes)
@@ -51,11 +51,15 @@ Reply shapes Fuel relies on:
 2. Start the pinned opencode (`opencode-ai@1.19.5`) with cwd = project: `opencode serve --hostname 127.0.0.1 --port <random>`.
 3. Env:
    - `OPENCODE_SERVER_PASSWORD`: random per launch (without it the server warns it is unsecured)
-   - `MODEL_API_KEY`: from the OS keychain, never written to disk
+   - the selected provider's key, injected into this process only (from the OS keychain or the private
+     `~/.config/rocketide/credentials` file): `MODEL_API_KEY` for Meta and custom endpoints, or `OPENAI_API_KEY`,
+     `ANTHROPIC_API_KEY`, ... for a native provider. It is never written to a project or a log.
    - `ROCKET_FUEL_HOME`, `ROCKET_PDK_ROOTS` (`:`-separated, read-only for the agent)
    - `XDG_DATA_HOME`/`XDG_CONFIG_HOME`/`XDG_STATE_HOME`/`XDG_CACHE_HOME` under the app's own data folder, so it never shares state with a user's own opencode install (1.x refuses to start on a v2 database)
    - `PWD` = the project path: opencode reads its directory from `PWD`, not the process cwd (`child_process.spawn({cwd})` alone is not enough)
-   - `ROCKET_MODEL` (optional) overrides the default `meta/muse-spark-1.3` when installing the config
+   - `ROCKET_MODEL` (`provider/model`, default `meta/muse-spark-1.3`), optional `ROCKET_SMALL_MODEL`,
+     `ROCKET_TUTOR_MODEL`, `ROCKET_REVIEWER_MODEL`, and for a custom endpoint `ROCKET_PROVIDER_TYPE=openai-compatible`
+     plus `ROCKET_BASE_URL`, when installing the config. A saved `~/.config/rocketide/model.json` wins over `.env`.
 4. The UI uses opencode's session, prompt, event-stream and permission-reply endpoints. `scripts/dev.sh <project> serve --port 4097` reproduces this locally.
 
 For UI work before the agent is ready: `evals/replay_server.py <recording>` serves a recorded session on
