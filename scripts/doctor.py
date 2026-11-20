@@ -12,6 +12,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -20,8 +21,11 @@ FUEL_HOME = Path(__file__).resolve().parents[1]
 ROOT = FUEL_HOME.parent
 PINNED_OPENCODE = "1.19.5"
 LOG = FUEL_HOME / ".opencode-home" / "data" / "opencode" / "log" / "opencode.log"
-# Provider keys opencode reads from the environment (names only; values are never printed).
-PROVIDER_KEYS = {"MODEL_API_KEY": "meta (Muse)"}
+sys.path.insert(0, str(FUEL_HOME / "scripts"))
+import model_config  # noqa: E402  (the canonical provider/model resolver)
+
+# Providers that do not need an API key.
+KEYLESS_PROVIDERS = model_config.KEYLESS_PROVIDERS
 
 problems = 0
 
@@ -44,7 +48,12 @@ def read_env() -> dict[str, str]:
             match = re.match(r"^\s*([A-Z_][A-Z0-9_]*)=(.*)$", line)
             if match:
                 values[match.group(1)] = match.group(2).strip().strip("'\"")
-    for key in ("ROCKET_MODEL", "ROCKET_ENGINE_HOME", *PROVIDER_KEYS):
+    keys = ["ROCKET_MODEL", "ROCKET_PROVIDER", "ROCKET_MODEL_ID", "ROCKET_PROVIDER_TYPE",
+            "ROCKET_BASE_URL", "ROCKET_SMALL_MODEL", "ROCKET_TUTOR_MODEL", "ROCKET_REVIEWER_MODEL",
+            "ROCKET_MODEL_CONFIG", "ROCKET_CREDENTIALS_FILE", "ROCKET_ENGINE_HOME", "MODEL_API_KEY"]
+    for names in model_config.PROVIDER_KEY_ENVS.values():
+        keys.extend(names)
+    for key in keys:
         if os.environ.get(key):
             values[key] = os.environ[key]
     return values
@@ -107,8 +116,8 @@ def classify(log_text: str) -> tuple[str, str]:
     """(problem, fix) from opencode's log for a failed model call."""
     errors = re.findall(r'error\.error="([^"]*)', log_text) + re.findall(r'"message":"([^"]{0,200})', log_text)
     joined = " | ".join(errors)
-    if re.search(r"free usage|free_tier_limit", joined, re.I):
-        return ("the provider's usage limit is used up", "wait for the reset, or check your Meta Model API plan")
+    if re.search(r"free usage|free_tier_limit|quota", joined, re.I):
+        return ("the provider's usage limit is used up", "wait for the reset, or check your provider plan")
     if re.search(r"401|403|unauthori[sz]ed|invalid.{0,20}key|api key", joined, re.I):
         return ("the provider rejected the key", "check the key in rocket_fuel/.env for this provider")
     if re.search(r"model.{0,30}not found|ProviderModelNotFound|unknown model|no such model", joined, re.I):
@@ -127,6 +136,10 @@ def check_model(model: str, timeout: float) -> None:
         offset = LOG.stat().st_size if LOG.is_file() else 0
         started = time.time()
         env = dict(os.environ, ROCKET_MODEL=model)
+        if os.environ.get("ROCKET_MODEL_CONFIG"):
+            env["ROCKET_MODEL_CONFIG"] = os.environ["ROCKET_MODEL_CONFIG"]
+        for stale in ("ROCKET_PROVIDER", "ROCKET_MODEL_ID"):
+            env.pop(stale, None)
         out_file = project.parent / f"{project.name}.out"
 
         def new_log() -> str:
@@ -171,20 +184,35 @@ def main() -> int:
     check_tools()
     check_checkouts(env)
 
-    model = args.model or env.get("ROCKET_MODEL") or "meta/muse-spark-1.3"
-    keys = [f"{name} ({PROVIDER_KEYS[name]})" for name in PROVIDER_KEYS if env.get(name)]
-    if not (FUEL_HOME / ".env").is_file():
-        report("WARN", ".env", "missing", "cp .env.example .env")
-    provider = model.split("/", 1)[0]
-    if provider != "meta":
-        report("FAIL", f"ROCKET_MODEL={model}", "not a Meta model; only meta/... models run", "set ROCKET_MODEL=meta/muse-spark-1.3")
+    # Resolve as the launcher does: a saved configuration wins over .env, while explicitly exported values win
+    # over both. read_env() has .env plus the real environment, so drop the .env-only model values in that case.
+    resolved_env = {**os.environ, **env}
+    if model_config.config_path(os.environ).is_file():
+        for name in ("ROCKET_MODEL", "ROCKET_PROVIDER", "ROCKET_MODEL_ID", "ROCKET_PROVIDER_TYPE",
+                     "ROCKET_PROVIDER_NAME", "ROCKET_BASE_URL", "ROCKET_SMALL_MODEL", "ROCKET_TUTOR_MODEL",
+                     "ROCKET_REVIEWER_MODEL", "ROCKET_MODEL_CALL_LOG"):
+            if name not in os.environ:
+                resolved_env.pop(name, None)
+    try:
+        effective = model_config.resolve(resolved_env)
+    except model_config.ConfigError as exc:
+        report("FAIL", "model configuration", str(exc), "fix ~/.config/rocketide/model.json or ROCKET_MODEL")
         print(f"\n{problems} problem(s) to fix.")
         return 1
-    report("OK", f"ROCKET_MODEL={model}", "Meta Model API key " + ("set" if keys else "not set"))
-    needs = "MODEL_API_KEY"
-    if needs and not env.get(needs):
-        report("FAIL", f"key for {provider}", f"{needs} is not set", f"add {needs}=… to rocket_fuel/.env")
-    elif args.no_model:
+    model = args.model or effective["model_ref"]
+    provider = model.split("/", 1)[0]
+    key = model_config.provider_key(provider, resolved_env)
+    if not (FUEL_HOME / ".env").is_file():
+        report("WARN", ".env", "missing", "cp .env.example .env")
+    report("OK", f"provider {effective['provider_name']} ({effective['provider_type']})",
+           (f"base URL {effective['base_url']}" if effective.get("base_url") else "native provider"))
+    report("OK", f"ROCKET_MODEL={model}",
+           f"key for {provider} " + ("set" if key else "not set"))
+    if provider not in KEYLESS_PROVIDERS and not key:
+        level = "FAIL" if provider not in model_config.NATIVE_PROVIDERS else "WARN"
+        report(level, f"key for {provider}", "no key found in the environment or credentials file",
+               f"set {model_config.PROVIDER_KEY_ENVS.get(provider, ('MODEL_API_KEY',))[0]} or add it in the app")
+    if args.no_model:
         report("WARN", f"model {model}", "not checked (--no-model)")
     else:
         check_model(model, args.timeout)

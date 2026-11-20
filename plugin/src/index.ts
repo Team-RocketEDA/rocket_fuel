@@ -3,6 +3,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { appendFileSync, mkdirSync, readFileSync } from "node:fs"
 import path from "node:path"
+import { modelCallRecord } from "./modelCalls"
 import {
   checkEditPath,
   constraintsLocked,
@@ -25,6 +26,8 @@ export const RocketPlugin: Plugin = async ({ directory }) => {
   // Their request and run ids: fetching a counted run again costs nothing and stays allowed at the limit.
   const countedRunIds = new Map<string, Set<string>>()
   const auditDir = path.join(directory, ".rocket")
+  const loggedMessages = new Set<string>()
+  const callLog = process.env.ROCKET_MODEL_CALL_LOG || path.join(auditDir, "model-calls.jsonl")
 
   function audit(entry: Record<string, unknown>) {
     try {
@@ -38,6 +41,20 @@ export const RocketPlugin: Plugin = async ({ directory }) => {
   audit({ event: "plugin_loaded", pdkRoots })
 
   return {
+    // Provider-neutral model activity: provider, model, status, timing and tokens, never prompts or content.
+    event: async ({ event }) => {
+      const record = modelCallRecord(event)
+      if (!record || loggedMessages.has(record.message_id)) return
+      loggedMessages.add(record.message_id)
+      if (loggedMessages.size > 2000) loggedMessages.clear()
+      try {
+        mkdirSync(path.dirname(callLog), { recursive: true })
+        appendFileSync(callLog, JSON.stringify(record) + "\n", { mode: 0o600 })
+      } catch {
+        // Observability must never take down a session.
+      }
+    },
+
     "tool.execute.before": async (input, output) => {
       const { tool, sessionID } = input
 
